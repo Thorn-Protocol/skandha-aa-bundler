@@ -1,9 +1,4 @@
-import fastify, {
-  FastifyError,
-  FastifyInstance,
-  FastifyReply,
-  FastifyRequest,
-} from "fastify";
+import fastify, { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import RpcError from "types/lib/api/errors/rpc-error";
@@ -13,11 +8,7 @@ import { HttpStatus } from "./constants";
 import { JsonRpcRequest } from "./interface";
 
 export class Server {
-  constructor(
-    public http: FastifyInstanceAny,
-    public ws: FastifyInstanceAny | null,
-    private config: ServerConfig
-  ) {}
+  constructor(public http: FastifyInstanceAny, public ws: FastifyInstanceAny | null, private config: ServerConfig) {}
 
   static async init(config: ServerConfig): Promise<Server> {
     let ws: FastifyInstanceAny | null = null;
@@ -77,11 +68,7 @@ export class Server {
   }
 
   async listen(): Promise<void> {
-    const errorHandler = (
-      err: FastifyError,
-      req: FastifyRequest,
-      res: FastifyReply
-    ): FastifyReply => {
+    const errorHandler = (err: FastifyError, req: FastifyRequest, res: FastifyReply): FastifyReply => {
       // eslint-disable-next-line no-console
       logger.error(err);
 
@@ -99,11 +86,9 @@ export class Server {
         });
       }
 
-      return res
-        .status(err.statusCode ?? HttpStatus.INTERNAL_SERVER_ERROR)
-        .send({
-          error: "Unexpected behaviour",
-        });
+      return res.status(err.statusCode ?? HttpStatus.INTERNAL_SERVER_ERROR).send({
+        error: "Unexpected behaviour",
+      });
     };
 
     this.http.setErrorHandler(errorHandler);
@@ -111,15 +96,12 @@ export class Server {
       {
         port: this.config.port,
         host: this.config.host,
-        listenTextResolver: (address) =>
-          `HTTP server listening at ${address}/rpc`,
+        listenTextResolver: (address) => `HTTP server listening at ${address}/rpc`,
       },
       (err) => {
         if (err) throw err;
         if (this.http.websocketServer != null) {
-          this.http.log.info(
-            `Websocket server listening at ws://${this.config.host}:${this.config.port}/rpc`
-          );
+          this.http.log.info(`Websocket server listening at ws://${this.config.host}:${this.config.port}/rpc`);
         }
       }
     );
@@ -130,8 +112,7 @@ export class Server {
         {
           port: this.config.wsPort,
           host: this.config.host,
-          listenTextResolver: () =>
-            `Websocket server listening at ws://${this.config.host}:${this.config.wsPort}/rpc`,
+          listenTextResolver: () => `Websocket server listening at ws://${this.config.host}:${this.config.wsPort}/rpc`,
         },
         (err) => {
           if (err) throw err;

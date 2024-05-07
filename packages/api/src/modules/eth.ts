@@ -1,9 +1,5 @@
 import { Eth } from "executor/lib/modules/eth";
-import {
-  EstimatedUserOperationGas,
-  UserOperationByHashResponse,
-  UserOperationReceipt,
-} from "types/lib/api/interfaces";
+import { EstimatedUserOperationGas, UserOperationByHashResponse, UserOperationReceipt } from "types/lib/api/interfaces";
 import { RpcMethodValidator } from "../utils/RpcMethodValidator";
 import { SendUserOperationGasArgs } from "../dto/SendUserOperation.dto";
 import { EstimateUserOperationGasArgs } from "../dto/EstimateUserOperation.dto";
@@ -24,9 +20,7 @@ export class EthAPI {
   /**
    * @params args sama as in sendUserOperation
    */
-  async estimateUserOpGasAndValidateSignature(
-    args: SendUserOperationGasArgs
-  ): Promise<EstimatedUserOperationGas> {
+  async estimateUserOpGasAndValidateSignature(args: SendUserOperationGasArgs): Promise<EstimatedUserOperationGas> {
     return await this.ethModule.estimateUserOperationGasWithSignature(args);
   }
 
@@ -40,9 +34,7 @@ export class EthAPI {
    * @returns
    */
   @RpcMethodValidator(EstimateUserOperationGasArgs)
-  async estimateUserOperationGas(
-    args: EstimateUserOperationGasArgs
-  ): Promise<EstimatedUserOperationGas> {
+  async estimateUserOperationGas(args: EstimateUserOperationGasArgs): Promise<EstimatedUserOperationGas> {
     return await this.ethModule.estimateUserOperationGas(args);
   }
 
@@ -52,9 +44,7 @@ export class EthAPI {
    * @returns null in case the UserOperation is not yet included in a block, or a full UserOperation,
    * with the addition of entryPoint, blockNumber, blockHash and transactionHash
    */
-  async getUserOperationByHash(
-    hash: string
-  ): Promise<UserOperationByHashResponse | null> {
+  async getUserOperationByHash(hash: string): Promise<UserOperationByHashResponse | null> {
     return await this.ethModule.getUserOperationByHash(hash);
   }
 
@@ -63,9 +53,7 @@ export class EthAPI {
    * @param hash user op hash
    * @returns a UserOperation receipt
    */
-  async getUserOperationReceipt(
-    hash: string
-  ): Promise<UserOperationReceipt | null> {
+  async getUserOperationReceipt(hash: string): Promise<UserOperationReceipt | null> {
     return await this.ethModule.getUserOperationReceipt(hash);
   }
 

@@ -8,10 +8,7 @@ import { BigNumberish } from "ethers";
 import { ReputationService } from "../ReputationService";
 import { ExecutorEvent, ExecutorEventBus } from "../SubscriptionService";
 import { NetworkConfig, StakeInfo } from "../../interfaces";
-import {
-  IMempoolEntry,
-  MempoolEntrySerialized,
-} from "../../entities/interfaces";
+import { IMempoolEntry, MempoolEntrySerialized } from "../../entities/interfaces";
 import { MempoolEntry } from "../../entities/MempoolEntry";
 import { getAddr, now } from "../../utils";
 import { rawEntryToMempoolEntry } from "./utils";
@@ -34,11 +31,7 @@ export class MempoolService {
   ) {
     this.USEROP_COLLECTION_KEY = `${chainId}:USEROPKEYS`;
     this.USEROP_HASHES_COLLECTION_PREFIX = "USEROPHASH:";
-    this.reputationCheck = new MempoolReputationChecks(
-      this,
-      this.reputationService,
-      this.networkConfig
-    );
+    this.reputationCheck = new MempoolReputationChecks(this, this.reputationService, this.networkConfig);
 
     setInterval(() => {
       void this.deleteOldUserOps();
@@ -54,15 +47,11 @@ export class MempoolService {
   }
 
   async fetchPendingUserOps(): Promise<MempoolEntry[]> {
-    return (await this.fetchAll()).filter(
-      (entry) => entry.status < MempoolEntryStatus.OnChain
-    );
+    return (await this.fetchAll()).filter((entry) => entry.status < MempoolEntryStatus.OnChain);
   }
 
   async fetchManyByKeys(keys: string[]): Promise<MempoolEntry[]> {
-    const rawEntries = await this.db
-      .getMany<MempoolEntry>(keys)
-      .catch(() => []);
+    const rawEntries = await this.db.getMany<MempoolEntry>(keys).catch(() => []);
     return rawEntries.map(rawEntryToMempoolEntry);
   }
 
@@ -71,9 +60,7 @@ export class MempoolService {
   }
 
   async getEntryByHash(hash: string): Promise<MempoolEntry | null> {
-    const key = await this.db
-      .get<string>(`${this.USEROP_HASHES_COLLECTION_PREFIX}${hash}`)
-      .catch(() => null);
+    const key = await this.db.get<string>(`${this.USEROP_HASHES_COLLECTION_PREFIX}${hash}`).catch(() => null);
     if (!key) return null;
     return this.findByKey(key);
   }
@@ -86,10 +73,7 @@ export class MempoolService {
       .slice(offset, offset + size);
   }
 
-  async validateUserOpReplaceability(
-    userOp: UserOperationStruct,
-    entryPoint: string
-  ): Promise<boolean> {
+  async validateUserOpReplaceability(userOp: UserOperationStruct, entryPoint: string): Promise<boolean> {
     const entry = new MempoolEntry({
       chainId: this.chainId,
       userOp,
@@ -116,13 +100,7 @@ export class MempoolService {
       await this.update(entry);
 
       // event bus logic
-      if (
-        [
-          MempoolEntryStatus.Cancelled,
-          MempoolEntryStatus.Submitted,
-          MempoolEntryStatus.Reverted,
-        ].findIndex((st) => st === status) > -1
-      ) {
+      if ([MempoolEntryStatus.Cancelled, MempoolEntryStatus.Submitted, MempoolEntryStatus.Reverted].findIndex((st) => st === status) > -1) {
         this.eventBus.emit(ExecutorEvent.submittedUserOps, entry);
       }
     }
@@ -172,6 +150,7 @@ export class MempoolService {
     });
     await this.mutex.runExclusive(async () => {
       const existingEntry = await this.find(entry);
+      console.log(" existingEntry ", existingEntry);
       if (existingEntry) {
         await this.validateReplaceability(entry, existingEntry);
         await this.db.put(this.getKey(entry), {
@@ -182,13 +161,7 @@ export class MempoolService {
         await this.saveUserOpHash(entry.userOpHash, entry);
         this.logger.debug("Mempool: User op replaced");
       } else {
-        await this.reputationCheck.checkEntityCountInMempool(
-          entry,
-          senderInfo,
-          factoryInfo,
-          paymasterInfo,
-          aggregatorInfo
-        );
+        await this.reputationCheck.checkEntityCountInMempool(entry, senderInfo, factoryInfo, paymasterInfo, aggregatorInfo);
         await this.reputationCheck.checkMultipleRolesViolation(entry);
         const userOpKeys = await this.fetchKeys();
         const key = this.getKey(entry);
@@ -206,10 +179,7 @@ export class MempoolService {
   async deleteOldUserOps(): Promise<void> {
     const removableEntries = (await this.fetchAll()).filter((entry) => {
       if (entry.status < MempoolEntryStatus.OnChain) return false;
-      if (
-        entry.lastUpdatedTime + this.networkConfig.archiveDuration * 1000 >
-        now()
-      ) {
+      if (entry.lastUpdatedTime + this.networkConfig.archiveDuration * 1000 > now()) {
         return false;
       }
       return true;
@@ -230,16 +200,12 @@ export class MempoolService {
 
   private async fetchAll(): Promise<MempoolEntry[]> {
     const keys = await this.fetchKeys();
-    const rawEntries = await this.db
-      .getMany<MempoolEntry>(keys)
-      .catch(() => []);
+    const rawEntries = await this.db.getMany<MempoolEntry>(keys).catch(() => []);
     return rawEntries.map(rawEntryToMempoolEntry);
   }
 
   private async fetchKeys(): Promise<string[]> {
-    const userOpKeys = await this.db
-      .get<string[]>(this.USEROP_COLLECTION_KEY)
-      .catch(() => []);
+    const userOpKeys = await this.db.get<string[]>(this.USEROP_COLLECTION_KEY).catch(() => []);
     return userOpKeys;
   }
 
@@ -251,23 +217,14 @@ export class MempoolService {
     return null;
   }
 
-  private async validateReplaceability(
-    newEntry: MempoolEntry,
-    oldEntry?: MempoolEntry | null
-  ): Promise<boolean> {
+  private async validateReplaceability(newEntry: MempoolEntry, oldEntry?: MempoolEntry | null): Promise<boolean> {
     if (!oldEntry) {
       oldEntry = await this.find(newEntry);
     }
-    if (
-      !oldEntry ||
-      newEntry.canReplaceWithTTL(oldEntry, this.networkConfig.useropsTTL)
-    ) {
+    if (!oldEntry || newEntry.canReplaceWithTTL(oldEntry, this.networkConfig.useropsTTL)) {
       return true;
     }
-    throw new RpcError(
-      "User op cannot be replaced: fee too low",
-      RpcErrorCodes.INVALID_USEROP
-    );
+    throw new RpcError("User op cannot be replaced: fee too low", RpcErrorCodes.INVALID_USEROP);
   }
 
   private async update(entry: MempoolEntry): Promise<void> {
@@ -289,10 +246,7 @@ export class MempoolService {
     });
   }
 
-  private async saveUserOpHash(
-    hash: string,
-    entry: MempoolEntry
-  ): Promise<void> {
+  private async saveUserOpHash(hash: string, entry: MempoolEntry): Promise<void> {
     const key = this.getKey(entry);
     await this.db.put(`${this.USEROP_HASHES_COLLECTION_PREFIX}${hash}`, key);
   }

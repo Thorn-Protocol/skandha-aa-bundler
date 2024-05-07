@@ -1,15 +1,7 @@
 import { BigNumber, BytesLike } from "ethers";
 import { AddressZero } from "params/lib";
 import RpcError from "types/lib/api/errors/rpc-error";
-import {
-  IEntryPoint,
-  IEntryPoint__factory,
-  IAccount__factory,
-  IAggregatedAccount__factory,
-  IAggregator__factory,
-  IPaymaster__factory,
-  SenderCreator__factory,
-} from "types/lib/executor/contracts";
+import { IEntryPoint, IEntryPoint__factory, IAccount__factory, IAggregatedAccount__factory, IAggregator__factory, IPaymaster__factory, SenderCreator__factory } from "types/lib/executor/contracts";
 import { UserOperationStruct } from "types/lib/executor/contracts/EntryPoint";
 import * as RpcErrorCodes from "types/lib/api/errors/rpc-error-codes";
 import { Interface, hexZeroPad, hexlify, keccak256 } from "ethers/lib/utils";
@@ -17,11 +9,9 @@ import { BundlerCollectorReturn, CallEntry } from "types/lib/executor";
 import { UserOpValidationResult, StakeInfo } from "../../interfaces";
 import { getAddr } from "../../utils";
 
-export function nonGethErrorHandler(
-  epContract: IEntryPoint,
-  errorResult: any
-): any {
+export function nonGethErrorHandler(epContract: IEntryPoint, errorResult: any): any {
   try {
+    console.log(" error ", errorResult);
     let { error } = errorResult;
     if (error && error.error) {
       error = error.error;
@@ -49,10 +39,7 @@ export function nonGethErrorHandler(
   return errorResult;
 }
 
-export function parseErrorResult(
-  userOp: UserOperationStruct,
-  errorResult: { errorName: string; errorArgs: any }
-): UserOpValidationResult {
+export function parseErrorResult(userOp: UserOperationStruct, errorResult: { errorName: string; errorArgs: any }): UserOpValidationResult {
   if (!errorResult?.errorName?.startsWith("ValidationResult")) {
     // parse it as FailedOp
     // if its FailedOp, then we have the paymaster param... otherwise its an Error(string)
@@ -61,8 +48,7 @@ export function parseErrorResult(
       paymaster = undefined;
     }
     // eslint-disable-next-line
-    const msg: string =
-      errorResult.errorArgs?.reason ?? errorResult.toString();
+    const msg: string = errorResult.errorArgs?.reason ?? errorResult.toString();
 
     if (paymaster == null) {
       throw new RpcError(msg, RpcErrorCodes.VALIDATION_FAILED);
@@ -102,17 +88,11 @@ export function parseErrorResult(
     },
     factoryInfo: fillEntity(userOp.initCode, factoryInfo),
     paymasterInfo: fillEntity(userOp.paymasterAndData, paymasterInfo),
-    aggregatorInfo: fillEntity(
-      aggregatorInfo?.actualAggregator,
-      aggregatorInfo?.stakeInfo
-    ),
+    aggregatorInfo: fillEntity(aggregatorInfo?.actualAggregator, aggregatorInfo?.stakeInfo),
   };
 }
 
-export function compareBytecode(
-  artifactBytecode: string,
-  contractBytecode: string
-): number {
+export function compareBytecode(artifactBytecode: string, contractBytecode: string): number {
   if (artifactBytecode.length <= 2 || contractBytecode.length <= 2) return 0;
 
   if (typeof artifactBytecode === "string")
@@ -137,12 +117,7 @@ export function toBytes32(b: BytesLike | number): string {
   return hexZeroPad(hexlify(b).toLowerCase(), 32);
 }
 
-export function requireCond(
-  cond: boolean,
-  msg: string,
-  code?: number,
-  data: any = undefined
-): void {
+export function requireCond(cond: boolean, msg: string, code?: number, data: any = undefined): void {
   if (!cond) {
     throw new RpcError(msg, code, data);
   }
@@ -155,20 +130,10 @@ export function requireCond(
  * - last entry is top-level return from "simulateValidation". it as ret and rettype, but no type or address
  * @param tracerResults
  */
-export function parseCallStack(
-  tracerResults: BundlerCollectorReturn
-): CallEntry[] {
+export function parseCallStack(tracerResults: BundlerCollectorReturn): CallEntry[] {
   const abi = Object.values(
-    [
-      ...IEntryPoint__factory.abi,
-      ...IAccount__factory.abi,
-      ...IAggregatedAccount__factory.abi,
-      ...IAggregator__factory.abi,
-      ...IPaymaster__factory.abi,
-    ].reduce((set, entry: any) => {
-      const key = `${entry.name}(${entry?.inputs
-        ?.map((i: any) => i.type)
-        .join(",")})`;
+    [...IEntryPoint__factory.abi, ...IAccount__factory.abi, ...IAggregatedAccount__factory.abi, ...IAggregator__factory.abi, ...IPaymaster__factory.abi].reduce((set, entry: any) => {
+      const key = `${entry.name}(${entry?.inputs?.map((i: any) => i.type).join(",")})`;
       return {
         ...set,
         [key]: entry,
@@ -206,15 +171,9 @@ export function parseCallStack(
             return: `len=${returnData.length}`,
           });
         } else {
-          const method = callCatch(
-            () => xfaces.getFunction(top.method),
-            top.method
-          );
+          const method = callCatch(() => xfaces.getFunction(top.method), top.method);
           if (c.type === "REVERT") {
-            const parsedError = callCatch(
-              () => xfaces.parseError(returnData),
-              returnData
-            );
+            const parsedError = callCatch(() => xfaces.parseError(returnData), returnData);
             out.push({
               to: top.to,
               from: top.from,
@@ -224,10 +183,7 @@ export function parseCallStack(
               revert: parsedError,
             });
           } else {
-            const ret = callCatch(
-              () => xfaces.decodeFunctionResult(method, returnData),
-              returnData
-            );
+            const ret = callCatch(() => xfaces.decodeFunctionResult(method, returnData), returnData);
             out.push({
               to: top.to,
               from: top.from,
@@ -256,10 +212,7 @@ export function parseCallStack(
  * @param stakeInfoEntities stake info for (factory, account, paymaster). factory and paymaster can be null.
  * @param keccak array of buffers that were given to keccak in the transaction
  */
-export function parseEntitySlots(
-  stakeInfoEntities: { [addr: string]: StakeInfo | undefined },
-  keccak: string[]
-): { [addr: string]: Set<string> } {
+export function parseEntitySlots(stakeInfoEntities: { [addr: string]: StakeInfo | undefined }, keccak: string[]): { [addr: string]: Set<string> } {
   // for each entity (sender, factory, paymaster), hold the valid slot addresses
   // valid: the slot was generated by keccak(entity || ...)
   const entitySlots: { [addr: string]: Set<string> } = {};
@@ -287,20 +240,14 @@ export function parseEntitySlots(
 export const callsFromEntryPointMethodSigs: { [key: string]: string } = {
   factory: SenderCreator__factory.createInterface().getSighash("createSender"),
   account: IAccount__factory.createInterface().getSighash("validateUserOp"),
-  paymaster: IPaymaster__factory.createInterface().getSighash(
-    "validatePaymasterUserOp"
-  ),
+  paymaster: IPaymaster__factory.createInterface().getSighash("validatePaymasterUserOp"),
 };
 
 // return true if the given slot is associated with the given address, given the known keccak operations:
 // @param slot the SLOAD/SSTORE slot address we're testing
 // @param addr - the address we try to check for association with
 // @param reverseKeccak - a mapping we built for keccak values that contained the address
-export function isSlotAssociatedWith(
-  slot: string,
-  addr: string,
-  entitySlots: { [addr: string]: Set<string> }
-): boolean {
+export function isSlotAssociatedWith(slot: string, addr: string, entitySlots: { [addr: string]: Set<string> }): boolean {
   const addrPadded = hexZeroPad(addr, 32).toLowerCase();
   if (slot === addrPadded) {
     return true;
@@ -321,13 +268,8 @@ export function isSlotAssociatedWith(
   return false;
 }
 
-export function parseValidationResult(
-  entryPointContract: IEntryPoint,
-  userOp: UserOperationStruct,
-  data: string
-): UserOpValidationResult {
-  const { name: errorName, args: errorArgs } =
-    entryPointContract.interface.parseError(data);
+export function parseValidationResult(entryPointContract: IEntryPoint, userOp: UserOperationStruct, data: string): UserOpValidationResult {
+  const { name: errorName, args: errorArgs } = entryPointContract.interface.parseError(data);
   const errFullName = `${errorName}(${errorArgs.toString()})`;
   const errResult = parseErrorResult(userOp, {
     errorName,

@@ -4,19 +4,8 @@ import { Config } from "executor/lib/config";
 import RpcError from "types/lib/api/errors/rpc-error";
 import * as RpcErrorCodes from "types/lib/api/errors/rpc-error-codes";
 import { deepHexlify } from "utils/lib/hexlify";
-import {
-  BundlerRPCMethods,
-  CustomRPCMethods,
-  HttpStatus,
-  RedirectedRPCMethods,
-} from "./constants";
-import {
-  EthAPI,
-  DebugAPI,
-  Web3API,
-  RedirectAPI,
-  SubscriptionApi,
-} from "./modules";
+import { BundlerRPCMethods, CustomRPCMethods, HttpStatus, RedirectedRPCMethods } from "./constants";
+import { EthAPI, DebugAPI, Web3API, RedirectAPI, SubscriptionApi } from "./modules";
 import { SkandhaAPI } from "./modules/skandha";
 import { JsonRpcRequest, JsonRpcResponse } from "./interface";
 import { Server } from "./server";
@@ -63,9 +52,7 @@ export class ApiApp {
     this.redirectRpc = options.redirectRpc;
     this.executor = options.executor;
 
-    this.subscriptionApi = new SubscriptionApi(
-      this.executor.subscriptionService
-    );
+    this.subscriptionApi = new SubscriptionApi(this.executor.subscriptionService);
     this.ethApi = new EthAPI(this.executor.eth);
     this.debugApi = new DebugAPI(this.executor.debug);
     this.web3Api = new Web3API(this.executor.web3);
@@ -78,27 +65,15 @@ export class ApiApp {
       if (Array.isArray(req.body)) {
         response = [];
         for (const request of req.body) {
-          response.push(
-            await this.handleRpcRequest(
-              request,
-              req.ip,
-              req.headers.authorization
-            )
-          );
+          response.push(await this.handleRpcRequest(request, req.ip, req.headers.authorization));
         }
       } else {
-        response = await this.handleRpcRequest(
-          req.body as JsonRpcRequest,
-          req.ip,
-          req.headers.authorization
-        );
+        response = await this.handleRpcRequest(req.body as JsonRpcRequest, req.ip, req.headers.authorization);
       }
       return res.status(HttpStatus.OK).send(response);
     });
     this.server.http.get("*", async (req, res) => {
-      void res
-        .status(200)
-        .send("GET requests are not supported. Visit https://skandha.fyi");
+      void res.status(200).send("GET requests are not supported. Visit https://skandha.fyi");
     });
 
     if (this.server.ws != null) {
@@ -107,10 +82,7 @@ export class ApiApp {
           let response: Partial<JsonRpcResponse> = {};
           try {
             const request: JsonRpcRequest = JSON.parse(message.toString());
-            const wsRpc = await this.handleWsRequest(
-              socket,
-              request as JsonRpcRequest
-            );
+            const wsRpc = await this.handleWsRequest(socket, request as JsonRpcRequest);
             if (!wsRpc) {
               try {
                 response = await this.handleRpcRequest(request, "");
@@ -139,10 +111,7 @@ export class ApiApp {
     }
   }
 
-  private async handleWsRequest(
-    socket: WebSocket,
-    request: JsonRpcRequest
-  ): Promise<boolean> {
+  private async handleWsRequest(socket: WebSocket, request: JsonRpcRequest): Promise<boolean> {
     let response: JsonRpcResponse | undefined;
     const { method, params, jsonrpc, id } = request;
     try {
@@ -176,21 +145,12 @@ export class ApiApp {
     return true; // the request can not be handled by this function
   }
 
-  private async handleRpcRequest(
-    request: JsonRpcRequest,
-    ip: string,
-    authKey?: string
-  ): Promise<JsonRpcResponse> {
+  private async handleRpcRequest(request: JsonRpcRequest, ip: string, authKey?: string): Promise<JsonRpcResponse> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let result: any;
+    console.log(" Request = ", request);
     const { method, params, jsonrpc, id } = request;
-    if (
-      this.testingMode ||
-      ip === "localhost" ||
-      ip === "127.0.0.1" ||
-      (process.env.SKANDHA_ADMIN_KEY &&
-        authKey === process.env.SKANDHA_ADMIN_KEY)
-    ) {
+    if (this.testingMode || ip === "localhost" || ip === "127.0.0.1" || (process.env.SKANDHA_ADMIN_KEY && authKey === process.env.SKANDHA_ADMIN_KEY)) {
       switch (method) {
         case BundlerRPCMethods.debug_bundler_setBundlingMode:
           result = await this.debugApi.setBundlingMode(params[0]);
@@ -271,10 +231,12 @@ export class ApiApp {
               entryPoint: params[1],
             });
           } else {
+            console.log(" A ");
             result = await this.ethApi.estimateUserOperationGas({
               userOp: params[0],
               entryPoint: params[1],
             });
+            console.log(" result ", result);
           }
           break;
         }
@@ -308,10 +270,7 @@ export class ApiApp {
           result = await this.skandhaApi.getUserOperationStatus(params[0]);
           break;
         default:
-          throw new RpcError(
-            `Method ${method} is not supported`,
-            RpcErrorCodes.METHOD_NOT_FOUND
-          );
+          throw new RpcError(`Method ${method} is not supported`, RpcErrorCodes.METHOD_NOT_FOUND);
       }
     }
 

@@ -6,6 +6,7 @@ import { Relayer } from "../interfaces";
 import { Bundle, StorageMap } from "../../../interfaces";
 import { estimateBundleGasLimit } from "../utils";
 import { BaseRelayer } from "./base";
+import * as sapphire from "@oasisprotocol/sapphire-paratime";
 
 export class ClassicRelayer extends BaseRelayer {
   async sendBundle(bundle: Bundle): Promise<void> {
@@ -26,22 +27,17 @@ export class ClassicRelayer extends BaseRelayer {
     await mutex.runExclusive(async (): Promise<void> => {
       const beneficiary = await this.selectBeneficiary(relayer);
       const entryPoint = entries[0]!.entryPoint;
-      const entryPointContract = IEntryPoint__factory.connect(
-        entryPoint,
-        this.provider
-      );
+      const entryPointContract = IEntryPoint__factory.connect(entryPoint, this.provider);
 
-      const txRequest = entryPointContract.interface.encodeFunctionData(
-        "handleOps",
-        [entries.map((entry) => entry.userOp), beneficiary]
-      );
+      const txRequest = entryPointContract.interface.encodeFunctionData("handleOps", [entries.map((entry) => entry.userOp), beneficiary]);
 
       const transactionRequest: providers.TransactionRequest = {
         to: entryPoint,
         data: txRequest,
-        type: 2,
-        maxPriorityFeePerGas: bundle.maxPriorityFeePerGas,
-        maxFeePerGas: bundle.maxFeePerGas,
+        // type: 2,
+        // maxPriorityFeePerGas: bundle.maxPriorityFeePerGas,
+        //maxFeePerGas: bundle.maxFeePerGas,
+        gasPrice: 100e9,
       };
 
       if (this.networkConfig.eip2930) {
@@ -62,9 +58,7 @@ export class ClassicRelayer extends BaseRelayer {
         }
       }
 
-      if (
-        chainsWithoutEIP1559.some((chainId: number) => chainId === this.chainId)
-      ) {
+      if (chainsWithoutEIP1559.some((chainId: number) => chainId === this.chainId)) {
         transactionRequest.gasPrice = bundle.maxFeePerGas;
         delete transactionRequest.maxPriorityFeePerGas;
         delete transactionRequest.maxFeePerGas;
@@ -74,40 +68,27 @@ export class ClassicRelayer extends BaseRelayer {
 
       const transaction = {
         ...transactionRequest,
-        gasLimit: estimateBundleGasLimit(
-          this.networkConfig.bundleGasLimitMarkup,
-          bundle.entries
-        ),
+        gasLimit: estimateBundleGasLimit(this.networkConfig.bundleGasLimitMarkup, bundle.entries),
         chainId: this.provider._network.chainId,
         nonce: await relayer.getTransactionCount(),
       };
-
+      console.log(" transaction = ", transaction);
       // geth-dev's jsonRpcSigner doesn't support signTransaction
       if (!this.config.testingMode) {
         // check for execution revert
 
-        if (
-          !(await this.validateBundle(relayer, entries, transactionRequest))
-        ) {
+        if (!(await this.validateBundle(relayer, entries, transactionRequest))) {
           return;
         }
 
-        this.logger.debug(
-          `Trying to submit userops: ${bundle.entries
-            .map((entry) => entry.userOpHash)
-            .join(", ")}`
-        );
+        this.logger.debug(`Trying to submit userops: ${bundle.entries.map((entry) => entry.userOpHash).join(", ")}`);
         await this.submitTransaction(relayer, transaction, storageMap)
           .then(async (txHash: string) => {
             this.logger.debug(`Bundle submitted: ${txHash}`);
-            this.logger.debug(
-              `User op hashes ${entries.map((entry) => entry.userOpHash)}`
-            );
+            this.logger.debug(`User op hashes ${entries.map((entry) => entry.userOpHash)}`);
             await this.setSubmitted(entries, txHash);
 
-            await this.waitForEntries(entries).catch((err) =>
-              this.logger.error(err, "Relayer: Could not find transaction")
-            );
+            await this.waitForEntries(entries).catch((err) => this.logger.error(err, "Relayer: Could not find transaction"));
             this.reportSubmittedUserops(txHash, bundle);
           })
           .catch(async (err: any) => {
@@ -122,9 +103,7 @@ export class ClassicRelayer extends BaseRelayer {
           .sendTransaction(transaction)
           .then(async ({ hash }) => {
             this.logger.debug(`Bundle submitted: ${hash}`);
-            this.logger.debug(
-              `User op hashes ${entries.map((entry) => entry.userOpHash)}`
-            );
+            this.logger.debug(`User op hashes ${entries.map((entry) => entry.userOpHash)}`);
             await this.setSubmitted(entries, hash);
           })
           .catch((err: any) => this.handleUserOpFail(entries, err));
@@ -139,18 +118,12 @@ export class ClassicRelayer extends BaseRelayer {
    * @param storageMap storage map
    * @returns transaction hash
    */
-  private async submitTransaction(
-    relayer: Relayer,
-    transaction: providers.TransactionRequest,
-    storageMap: StorageMap
-  ): Promise<string> {
-    const signedRawTx = await relayer.signTransaction(transaction);
-    const method = !this.networkConfig.conditionalTransactions
-      ? "eth_sendRawTransaction"
-      : "eth_sendRawTransactionConditional";
-    const params = !this.networkConfig.conditionalTransactions
-      ? [signedRawTx]
-      : [signedRawTx, { knownAccounts: storageMap }];
+  private async submitTransaction(relayer: Relayer, transaction: providers.TransactionRequest, storageMap: StorageMap): Promise<string> {
+    const oasisRelayer = sapphire.wrap(relayer);
+    const signedRawTx = await oasisRelayer.signTransaction(transaction);
+    //const signedRawTx = await relayer.signTransaction(transaction);
+    const method = !this.networkConfig.conditionalTransactions ? "eth_sendRawTransaction" : "eth_sendRawTransactionConditional";
+    const params = !this.networkConfig.conditionalTransactions ? [signedRawTx] : [signedRawTx, { knownAccounts: storageMap }];
 
     this.logger.debug({
       method,
@@ -161,11 +134,15 @@ export class ClassicRelayer extends BaseRelayer {
     let hash = "";
     if (this.networkConfig.rpcEndpointSubmit) {
       this.logger.debug("Sending to a separate rpc");
-      const provider = new providers.JsonRpcProvider(
-        this.networkConfig.rpcEndpointSubmit
-      );
+      const provider = new providers.JsonRpcProvider(this.networkConfig.rpcEndpointSubmit);
+      const oasisProvider = sapphire.wrap(provider);
+      console.log(" xx ");
+      //hash = await oasisProvider.send(method, params);
       hash = await provider.send(method, params);
     } else {
+      const oasisProvider = sapphire.wrap(this.provider);
+      console.log(" yy ");
+      //hash = await oasisProvider.send(method, params);
       hash = await this.provider.send(method, params);
     }
 
