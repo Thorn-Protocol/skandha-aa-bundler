@@ -30,21 +30,21 @@ export class EstimationService {
   }
 
   async estimateUserOp(userOp: UserOperationStruct, entryPoint: string): Promise<ExecutionResult> {
-    console.log(" E ");
+    //  console.log(" E ");
     const entryPointContract = IEntryPoint__factory.connect(entryPoint, this.provider);
 
     const gasLimit = BigNumber.from(userOp.callGasLimit).add(userOp.verificationGasLimit).add(userOp.preVerificationGas).add(5000); // markup added by EP
-    console.log(" gasLimit ", gasLimit.toString());
-    console.log(" entrypoint = ", entryPointContract);
+    //console.log(" gasLimit ", gasLimit.toString());
+    //console.log(" entrypoint = ", entryPointContract);
     const errorResult = await entryPointContract.callStatic
       .simulateHandleOp(userOp, AddressZero, BytesZero, {
         gasLimit,
       })
       .catch((e: any) => {
-        console.log(" errorResult ", e);
+        //  console.log(" errorResult ", e);
         return nonGethErrorHandler(entryPointContract, e);
       });
-    console.log(" errorResultxx ", errorResult);
+    //console.log(" errorResultxx ", errorResult);
     if (errorResult.errorName === "FailedOp") {
       throw new RpcError(errorResult.errorArgs.at(-1), RpcErrorCodes.VALIDATION_FAILED);
     }

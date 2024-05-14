@@ -4,6 +4,7 @@ import { IEntity, RelayingMode } from "types/lib/executor";
 import { getAddress } from "ethers/lib/utils";
 import { BundlerConfig, ConfigOptions, NetworkConfig } from "./interfaces";
 
+import HDKey from "hdkey";
 export class Config {
   testingMode: boolean;
   unsafeMode: boolean;
@@ -50,6 +51,16 @@ export class Config {
         wallets.push(Wallet.fromMnemonic(privKey).connect(provider));
       }
     }
+    if (this.config.seed.length > 0 && this.config.amountRelayerFromSeed > 0) {
+      const hdKey = HDKey.fromMasterSeed(Buffer.from(this.config.seed, "hex"));
+      for (let i = 0; i < this.config.amountRelayerFromSeed; i++) {
+        const path = `m/44'/60'/0'/0/${i}`;
+        const childKey = hdKey.derive(path);
+        const wallet = new Wallet(childKey.privateKey, provider);
+        wallets.push(wallet);
+      }
+    }
+
     return wallets;
   }
 
@@ -79,25 +90,16 @@ export class Config {
   }
 
   isEntryPointSupported(entryPoint: string): boolean {
-    return !!this.config.entryPoints.some(
-      (addr) => addr.toLowerCase() === entryPoint.toLowerCase()
-    );
+    return !!this.config.entryPoints.some((addr) => addr.toLowerCase() === entryPoint.toLowerCase());
   }
 
   private getDefaultNetworkConfig(config: NetworkConfig | null): NetworkConfig {
     if (config == null) config = {} as NetworkConfig;
-    config.entryPoints = fromEnvVar(
-      "ENTRYPOINTS",
-      config.entryPoints,
-      true
-    ) as string[];
+    config.entryPoints = fromEnvVar("ENTRYPOINTS", config.entryPoints, true) as string[];
 
     config.relayers = fromEnvVar("RELAYERS", config.relayers, true) as string[];
 
-    config.beneficiary = fromEnvVar(
-      "BENEFICIARY",
-      config.beneficiary || bundlerDefaultConfigs.beneficiary
-    ) as string;
+    config.beneficiary = fromEnvVar("BENEFICIARY", config.beneficiary || bundlerDefaultConfigs.beneficiary) as string;
 
     config.rpcEndpoint = fromEnvVar("RPC", config.rpcEndpoint) as string;
 
@@ -105,201 +107,57 @@ export class Config {
       config.rpcEndpoint = "http://localhost:8545"; // local geth
     }
 
-    config.etherscanApiKey = fromEnvVar(
-      "ETHERSCAN_API_KEY",
-      config.etherscanApiKey || bundlerDefaultConfigs.etherscanApiKey
-    ) as string;
-    config.receiptLookupRange = Number(
-      fromEnvVar(
-        "RECEIPT_LOOKUP_RANGE",
-        config.receiptLookupRange || bundlerDefaultConfigs.receiptLookupRange
-      )
-    );
-    config.conditionalTransactions = Boolean(
-      fromEnvVar(
-        "CONDITIONAL_TRANSACTIONS",
-        config.conditionalTransactions ||
-          bundlerDefaultConfigs.conditionalTransactions
-      )
-    );
-    config.rpcEndpointSubmit = fromEnvVar(
-      "RPC_SUBMIT",
-      config.rpcEndpointSubmit || bundlerDefaultConfigs.rpcEndpointSubmit
-    ) as string;
-    config.gasPriceMarkup = Number(
-      fromEnvVar(
-        "GAS_PRICE_MARKUP",
-        config.gasPriceMarkup || bundlerDefaultConfigs.gasPriceMarkup
-      )
-    );
-    config.enforceGasPrice = Boolean(
-      fromEnvVar(
-        "ENFORCE_GAS_PRICE",
-        config.enforceGasPrice || bundlerDefaultConfigs.enforceGasPrice
-      )
-    );
-    config.enforceGasPriceThreshold = Number(
-      fromEnvVar(
-        "ENFORCE_GAS_PRICE_THRESHOLD",
-        config.enforceGasPriceThreshold ||
-          bundlerDefaultConfigs.enforceGasPriceThreshold
-      )
-    );
-    config.eip2930 = Boolean(
-      fromEnvVar("EIP2930", config.eip2930 || bundlerDefaultConfigs.eip2930)
-    );
-    config.useropsTTL = Number(
-      fromEnvVar(
-        "USEROPS_TTL",
-        config.useropsTTL || bundlerDefaultConfigs.useropsTTL
-      )
-    );
+    config.etherscanApiKey = fromEnvVar("ETHERSCAN_API_KEY", config.etherscanApiKey || bundlerDefaultConfigs.etherscanApiKey) as string;
+    config.receiptLookupRange = Number(fromEnvVar("RECEIPT_LOOKUP_RANGE", config.receiptLookupRange || bundlerDefaultConfigs.receiptLookupRange));
+    config.conditionalTransactions = Boolean(fromEnvVar("CONDITIONAL_TRANSACTIONS", config.conditionalTransactions || bundlerDefaultConfigs.conditionalTransactions));
+    config.rpcEndpointSubmit = fromEnvVar("RPC_SUBMIT", config.rpcEndpointSubmit || bundlerDefaultConfigs.rpcEndpointSubmit) as string;
+    config.gasPriceMarkup = Number(fromEnvVar("GAS_PRICE_MARKUP", config.gasPriceMarkup || bundlerDefaultConfigs.gasPriceMarkup));
+    config.enforceGasPrice = Boolean(fromEnvVar("ENFORCE_GAS_PRICE", config.enforceGasPrice || bundlerDefaultConfigs.enforceGasPrice));
+    config.enforceGasPriceThreshold = Number(fromEnvVar("ENFORCE_GAS_PRICE_THRESHOLD", config.enforceGasPriceThreshold || bundlerDefaultConfigs.enforceGasPriceThreshold));
+    config.eip2930 = Boolean(fromEnvVar("EIP2930", config.eip2930 || bundlerDefaultConfigs.eip2930));
+    config.useropsTTL = Number(fromEnvVar("USEROPS_TTL", config.useropsTTL || bundlerDefaultConfigs.useropsTTL));
 
-    config.minStake = BigNumber.from(
-      fromEnvVar("MIN_STAKE", config.minStake ?? bundlerDefaultConfigs.minStake)
-    );
+    config.minStake = BigNumber.from(fromEnvVar("MIN_STAKE", config.minStake ?? bundlerDefaultConfigs.minStake));
 
-    config.minUnstakeDelay = Number(
-      fromEnvVar(
-        "MIN_UNSTAKE_DELAY",
-        config.minUnstakeDelay || bundlerDefaultConfigs.minUnstakeDelay
-      )
-    );
-    config.bundleGasLimitMarkup = Number(
-      fromEnvVar(
-        "BUNDLE_GAS_LIMIT_MARKUP",
-        config.bundleGasLimitMarkup ||
-          bundlerDefaultConfigs.bundleGasLimitMarkup
-      )
-    );
-    config.relayingMode = fromEnvVar(
-      "RELAYING_MODE",
-      config.relayingMode || bundlerDefaultConfigs.relayingMode
-    ) as RelayingMode;
+    config.minUnstakeDelay = Number(fromEnvVar("MIN_UNSTAKE_DELAY", config.minUnstakeDelay || bundlerDefaultConfigs.minUnstakeDelay));
+    config.bundleGasLimitMarkup = Number(fromEnvVar("BUNDLE_GAS_LIMIT_MARKUP", config.bundleGasLimitMarkup || bundlerDefaultConfigs.bundleGasLimitMarkup));
+    config.relayingMode = fromEnvVar("RELAYING_MODE", config.relayingMode || bundlerDefaultConfigs.relayingMode) as RelayingMode;
 
-    config.bundleInterval = Number(
-      fromEnvVar(
-        "BUNDLE_INTERVAL",
-        config.bundleInterval || bundlerDefaultConfigs.bundleInterval
-      )
-    );
+    config.bundleInterval = Number(fromEnvVar("BUNDLE_INTERVAL", config.bundleInterval || bundlerDefaultConfigs.bundleInterval));
 
-    config.bundleSize = Number(
-      fromEnvVar(
-        "BUNDLE_SIZE",
-        config.bundleSize || bundlerDefaultConfigs.bundleSize
-      )
-    );
+    config.bundleSize = Number(fromEnvVar("BUNDLE_SIZE", config.bundleSize || bundlerDefaultConfigs.bundleSize));
 
-    config.pvgMarkup = Number(
-      fromEnvVar(
-        "PVG_MARKUP",
-        config.pvgMarkup || bundlerDefaultConfigs.pvgMarkup
-      )
-    );
+    config.pvgMarkup = Number(fromEnvVar("PVG_MARKUP", config.pvgMarkup || bundlerDefaultConfigs.pvgMarkup));
 
-    config.canonicalMempoolId = String(
-      fromEnvVar(
-        "CANONICAL_MEMPOOL",
-        config.canonicalMempoolId || bundlerDefaultConfigs.canonicalMempoolId
-      )
-    );
+    config.canonicalMempoolId = String(fromEnvVar("CANONICAL_MEMPOOL", config.canonicalMempoolId || bundlerDefaultConfigs.canonicalMempoolId));
 
-    config.canonicalEntryPoint = String(
-      fromEnvVar(
-        "CANONICAL_ENTRY_POINT",
-        config.canonicalEntryPoint || bundlerDefaultConfigs.canonicalEntryPoint
-      )
-    );
+    config.canonicalEntryPoint = String(fromEnvVar("CANONICAL_ENTRY_POINT", config.canonicalEntryPoint || bundlerDefaultConfigs.canonicalEntryPoint));
 
-    config.cglMarkup = Number(
-      fromEnvVar(
-        "CGL_MARKUP",
-        config.cglMarkup || bundlerDefaultConfigs.cglMarkup
-      )
-    );
+    config.cglMarkup = Number(fromEnvVar("CGL_MARKUP", config.cglMarkup || bundlerDefaultConfigs.cglMarkup));
 
-    config.vglMarkup = Number(
-      fromEnvVar(
-        "VGL_MARKUP",
-        config.vglMarkup || bundlerDefaultConfigs.vglMarkup
-      )
-    );
+    config.vglMarkup = Number(fromEnvVar("VGL_MARKUP", config.vglMarkup || bundlerDefaultConfigs.vglMarkup));
 
-    config.gasFeeInSimulation = Boolean(
-      fromEnvVar(
-        "GAS_FEE_IN_SIMULATION",
-        config.gasFeeInSimulation || bundlerDefaultConfigs.gasFeeInSimulation
-      )
-    );
+    config.gasFeeInSimulation = Boolean(fromEnvVar("GAS_FEE_IN_SIMULATION", config.gasFeeInSimulation || bundlerDefaultConfigs.gasFeeInSimulation));
 
-    config.throttlingSlack = Number(
-      fromEnvVar(
-        "THROTTLING_SLACK",
-        config.throttlingSlack || bundlerDefaultConfigs.throttlingSlack
-      )
-    );
+    config.throttlingSlack = Number(fromEnvVar("THROTTLING_SLACK", config.throttlingSlack || bundlerDefaultConfigs.throttlingSlack));
 
-    config.banSlack = Number(
-      fromEnvVar("BAN_SLACK", config.banSlack || bundlerDefaultConfigs.banSlack)
-    );
+    config.banSlack = Number(fromEnvVar("BAN_SLACK", config.banSlack || bundlerDefaultConfigs.banSlack));
 
-    config.minInclusionDenominator = Number(
-      fromEnvVar(
-        "MIN_INCLUSION_DENOMINATOR",
-        config.minInclusionDenominator ||
-          bundlerDefaultConfigs.minInclusionDenominator
-      )
-    );
+    config.minInclusionDenominator = Number(fromEnvVar("MIN_INCLUSION_DENOMINATOR", config.minInclusionDenominator || bundlerDefaultConfigs.minInclusionDenominator));
 
-    config.merkleApiURL = String(
-      fromEnvVar(
-        "MERKLE_API_URL",
-        config.merkleApiURL || bundlerDefaultConfigs.merkleApiURL
-      )
-    );
+    config.merkleApiURL = String(fromEnvVar("MERKLE_API_URL", config.merkleApiURL || bundlerDefaultConfigs.merkleApiURL));
 
-    config.skipBundleValidation = Boolean(
-      fromEnvVar(
-        "SKIP_BUNDLE_VALIDATION",
-        config.skipBundleValidation ||
-          bundlerDefaultConfigs.skipBundleValidation
-      )
-    );
+    config.skipBundleValidation = Boolean(fromEnvVar("SKIP_BUNDLE_VALIDATION", config.skipBundleValidation || bundlerDefaultConfigs.skipBundleValidation));
 
-    config.bundleGasLimit = Number(
-      fromEnvVar(
-        "BUNDLE_GAS_LIMIT",
-        config.bundleGasLimit || bundlerDefaultConfigs.bundleGasLimit
-      )
-    );
+    config.bundleGasLimit = Number(fromEnvVar("BUNDLE_GAS_LIMIT", config.bundleGasLimit || bundlerDefaultConfigs.bundleGasLimit));
 
-    config.userOpGasLimit = Number(
-      fromEnvVar(
-        "USEROP_GAS_LIMIT",
-        config.userOpGasLimit || bundlerDefaultConfigs.userOpGasLimit
-      )
-    );
+    config.userOpGasLimit = Number(fromEnvVar("USEROP_GAS_LIMIT", config.userOpGasLimit || bundlerDefaultConfigs.userOpGasLimit));
 
-    config.kolibriAuthKey = String(
-      fromEnvVar(
-        "KOLIBRI_AUTH_KEY",
-        config.kolibriAuthKey || bundlerDefaultConfigs.kolibriAuthKey
-      )
-    );
+    config.kolibriAuthKey = String(fromEnvVar("KOLIBRI_AUTH_KEY", config.kolibriAuthKey || bundlerDefaultConfigs.kolibriAuthKey));
 
-    config.entryPointForwarder = String(
-      fromEnvVar(
-        "ENTRYPOINT_FORWARDER",
-        config.entryPointForwarder || bundlerDefaultConfigs.entryPointForwarder
-      )
-    );
+    config.entryPointForwarder = String(fromEnvVar("ENTRYPOINT_FORWARDER", config.entryPointForwarder || bundlerDefaultConfigs.entryPointForwarder));
 
-    config.fastlaneValidators = fromEnvVar(
-      "FASTLANE_VALIDATOR",
-      config.fastlaneValidators || bundlerDefaultConfigs.fastlaneValidators,
-      true
-    ) as string[];
+    config.fastlaneValidators = fromEnvVar("FASTLANE_VALIDATOR", config.fastlaneValidators || bundlerDefaultConfigs.fastlaneValidators, true) as string[];
 
     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
     if (!config.whitelistedEntities) {
@@ -310,11 +168,7 @@ export class Config {
      * validate whitelist addresses
      */
     for (const entity of ["paymaster", "account", "factory"]) {
-      config.whitelistedEntities[entity as IEntity] = fromEnvVar(
-        `WL_${entity.toUpperCase()}`,
-        config.whitelistedEntities[entity as IEntity],
-        true
-      ) as string[];
+      config.whitelistedEntities[entity as IEntity] = fromEnvVar(`WL_${entity.toUpperCase()}`, config.whitelistedEntities[entity as IEntity], true) as string[];
       const entities = config.whitelistedEntities[entity as IEntity];
       if (typeof entities != "undefined" && typeof entities != "object") {
         throw new Error("Invalid config");
@@ -333,12 +187,14 @@ export class Config {
 
 const bundlerDefaultConfigs: BundlerConfig = {
   beneficiary: "",
+  seed: "",
+  amountRelayerFromSeed: 0,
   minInclusionDenominator: 10,
   throttlingSlack: 10,
   banSlack: 50,
   minStake: utils.parseEther("0.01"),
   minUnstakeDelay: 0,
-  minSignerBalance: utils.parseEther("0.1"),
+  minSignerBalance: utils.parseEther("0.5"),
   multicall: "0xcA11bde05977b3631167028862bE2a173976CA11", // default multicall address
   validationGasLimit: 10e6,
   receiptLookupRange: 1024,
@@ -378,18 +234,11 @@ function getEnvVar<T>(envVar: string, fallback: T): T | string {
   return env;
 }
 
-function fromEnvVar<T>(
-  envVar = "",
-  fallback: T,
-  isArray = false
-): T | string | string[] {
+function fromEnvVar<T>(envVar = "", fallback: T, isArray = false): T | string | string[] {
   const envVarName = `SKANDHA_${envVar}`;
   const envVarOrFallback = getEnvVar(envVarName, fallback);
   if (isArray && typeof envVarOrFallback === "string") {
-    return (envVarOrFallback as string)
-      .toLowerCase()
-      .replace(/ /g, "")
-      .split(",");
+    return (envVarOrFallback as string).toLowerCase().replace(/ /g, "").split(",");
   }
   return envVarOrFallback;
 }

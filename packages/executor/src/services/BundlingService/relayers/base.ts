@@ -86,18 +86,9 @@ export abstract class BaseRelayer implements IRelayingMode {
     return index;
   }
 
-  protected async handleUserOpFail(
-    entries: MempoolEntry[],
-    err: any
-  ): Promise<void> {
+  protected async handleUserOpFail(entries: MempoolEntry[], err: any): Promise<void> {
     if (err.errorName !== "FailedOp") {
-      this.logger.error(
-        `Failed handleOps, but non-FailedOp error ${JSON.stringify(
-          err,
-          undefined,
-          2
-        )}`
-      );
+      this.logger.error(`Failed handleOps, but non-FailedOp error ${JSON.stringify(err, undefined, 2)}`);
       return;
     }
     const { index, paymaster, reason } = err.errorArgs;
@@ -113,16 +104,10 @@ export abstract class BaseRelayer implements IRelayingMode {
       // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
       if (failedEntry) {
         this.logger.debug(`${failedEntry.hash} reverted on chain. Deleting...`);
-        await this.mempoolService.updateStatus(
-          [failedEntry],
-          MempoolEntryStatus.Reverted,
-          {
-            revertReason: reason,
-          }
-        );
-        this.logger.error(
-          `Failed handleOps sender=${failedEntry.userOp.sender}`
-        );
+        await this.mempoolService.updateStatus([failedEntry], MempoolEntryStatus.Reverted, {
+          revertReason: reason,
+        });
+        this.logger.error(`Failed handleOps sender=${failedEntry.userOp.sender}`);
       }
     }
   }
@@ -134,11 +119,7 @@ export abstract class BaseRelayer implements IRelayingMode {
       this.metrics.useropsSubmitted.inc(bundle.entries.length);
       this.metrics.useropsInBundle.observe(bundle.entries.length);
       bundle.entries.forEach((entry) => {
-        this.metrics!.useropsTimeToProcess.observe(
-          Math.ceil(
-            (now() - (entry.submittedTime ?? entry.lastUpdatedTime)) / 1000
-          )
-        );
+        this.metrics!.useropsTimeToProcess.observe(Math.ceil((now() - (entry.submittedTime ?? entry.lastUpdatedTime)) / 1000));
       });
     }
   }
@@ -165,9 +146,7 @@ export abstract class BaseRelayer implements IRelayingMode {
 
     if (currentBalance.lte(config.minSignerBalance) || !beneficiary) {
       beneficiary = signerAddress;
-      this.logger.info(
-        `low balance on ${signerAddress}. using it as beneficiary`
-      );
+      this.logger.info(`low balance on ${signerAddress}. using it as beneficiary`);
     }
     return beneficiary;
   }
@@ -175,11 +154,7 @@ export abstract class BaseRelayer implements IRelayingMode {
   /**
    * calls eth_estimateGas with whole bundle
    */
-  protected async validateBundle(
-    relayer: Relayer,
-    entries: MempoolEntry[],
-    transactionRequest: providers.TransactionRequest
-  ): Promise<boolean> {
+  protected async validateBundle(relayer: Relayer, entries: MempoolEntry[], transactionRequest: providers.TransactionRequest): Promise<boolean> {
     if (this.networkConfig.skipBundleValidation) return true;
     try {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -188,11 +163,7 @@ export abstract class BaseRelayer implements IRelayingMode {
       await relayer.estimateGas(txWithoutGasLimit);
       return true;
     } catch (err) {
-      this.logger.debug(
-        `${entries
-          .map((entry) => entry.userOpHash)
-          .join("; ")} failed on chain estimation. deleting...`
-      );
+      this.logger.debug(`${entries.map((entry) => entry.userOpHash).join("; ")} failed on chain estimation. deleting...`);
       this.logger.error(err);
       await this.setCancelled(entries, "could not estimate bundle");
       this.reportFailedBundle();
@@ -200,41 +171,20 @@ export abstract class BaseRelayer implements IRelayingMode {
     }
   }
 
-  protected async setSubmitted(
-    entries: MempoolEntry[],
-    transaction: string
-  ): Promise<void> {
-    await this.mempoolService.updateStatus(
-      entries,
-      MempoolEntryStatus.Submitted,
-      {
-        transaction,
-      }
-    );
+  protected async setSubmitted(entries: MempoolEntry[], transaction: string): Promise<void> {
+    await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Submitted, {
+      transaction,
+    });
   }
 
-  protected async setCancelled(
-    entries: MempoolEntry[],
-    reason: string
-  ): Promise<void> {
-    await this.mempoolService.updateStatus(
-      entries,
-      MempoolEntryStatus.Cancelled,
-      { revertReason: reason }
-    );
+  protected async setCancelled(entries: MempoolEntry[], reason: string): Promise<void> {
+    await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Cancelled, { revertReason: reason });
   }
 
-  protected async setReverted(
-    entries: MempoolEntry[],
-    reason: string
-  ): Promise<void> {
-    await this.mempoolService.updateStatus(
-      entries,
-      MempoolEntryStatus.Reverted,
-      {
-        revertReason: reason,
-      }
-    );
+  protected async setReverted(entries: MempoolEntry[], reason: string): Promise<void> {
+    await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Reverted, {
+      revertReason: reason,
+    });
   }
 
   protected async setNew(entries: MempoolEntry[]): Promise<void> {

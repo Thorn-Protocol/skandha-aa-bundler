@@ -72,7 +72,7 @@ export class ClassicRelayer extends BaseRelayer {
         chainId: this.provider._network.chainId,
         nonce: await relayer.getTransactionCount(),
       };
-      console.log(" transaction = ", transaction);
+      //console.log(" transaction = ", transaction);
       // geth-dev's jsonRpcSigner doesn't support signTransaction
       if (!this.config.testingMode) {
         // check for execution revert

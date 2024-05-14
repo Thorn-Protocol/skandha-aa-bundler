@@ -148,7 +148,7 @@ export class ApiApp {
   private async handleRpcRequest(request: JsonRpcRequest, ip: string, authKey?: string): Promise<JsonRpcResponse> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     let result: any;
-    console.log(" Request = ", request);
+
     const { method, params, jsonrpc, id } = request;
     if (this.testingMode || ip === "localhost" || ip === "127.0.0.1" || (process.env.SKANDHA_ADMIN_KEY && authKey === process.env.SKANDHA_ADMIN_KEY)) {
       switch (method) {
@@ -231,12 +231,10 @@ export class ApiApp {
               entryPoint: params[1],
             });
           } else {
-            console.log(" A ");
             result = await this.ethApi.estimateUserOperationGas({
               userOp: params[0],
               entryPoint: params[1],
             });
-            console.log(" result ", result);
           }
           break;
         }

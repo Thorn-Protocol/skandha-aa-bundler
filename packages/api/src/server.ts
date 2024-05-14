@@ -59,7 +59,7 @@ export class Server {
     // RESPONSE LOG
     app.addHook("preSerialization", (request, reply, payload, done) => {
       if (payload) {
-        request.log.info({ body: payload }, "RESPONSE ::");
+        //  request.log.info({ body: payload }, "RESPONSE ::");
       }
       done();
     });

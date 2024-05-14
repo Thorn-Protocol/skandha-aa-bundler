@@ -14,9 +14,7 @@ const bottomBanner = `📖 For more information, check the CLI reference:
 ✍️ Give feedback and report issues on GitHub:
   * https://https://github.com/etherspot/skandha`;
 
-export const yarg = yargs(
-  (hideBin as (args: string[]) => string[])(process.argv)
-);
+export const yarg = yargs((hideBin as (args: string[]) => string[])(process.argv));
 
 /**
  * Common factory for running the CLI and running integration tests

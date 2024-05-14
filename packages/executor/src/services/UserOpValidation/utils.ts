@@ -11,7 +11,7 @@ import { getAddr } from "../../utils";
 
 export function nonGethErrorHandler(epContract: IEntryPoint, errorResult: any): any {
   try {
-    console.log(" error ", errorResult);
+    //console.log(" error ", errorResult);
     let { error } = errorResult;
     if (error && error.error) {
       error = error.error;

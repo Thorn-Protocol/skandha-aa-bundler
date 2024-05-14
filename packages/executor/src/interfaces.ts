@@ -76,6 +76,8 @@ export type GetNodeAPI = () => INodeAPI | null;
 export interface NetworkConfig {
   entryPoints: string[];
   relayers: string[];
+  seed: string;
+  amountRelayerFromSeed: number;
   beneficiary: string;
   rpcEndpoint: string;
   minInclusionDenominator: number;
@@ -170,10 +172,7 @@ export interface NetworkConfig {
   fastlaneValidators: string[];
 }
 
-export type BundlerConfig = Omit<
-  NetworkConfig,
-  "entryPoints" | "rpcEndpoint" | "relayer" | "relayers"
->;
+export type BundlerConfig = Omit<NetworkConfig, "entryPoints" | "rpcEndpoint" | "relayer" | "relayers">;
 
 export interface ConfigOptions {
   config: NetworkConfig | null;

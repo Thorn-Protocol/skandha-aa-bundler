@@ -1,11 +1,6 @@
 import { BigNumber, BigNumberish, ethers } from "ethers";
 import { Logger } from "types/lib";
-import {
-  GetConfigResponse,
-  GetFeeHistoryResponse,
-  GetGasPriceResponse,
-  UserOperationStatus,
-} from "types/lib/api/interfaces";
+import { GetConfigResponse, GetFeeHistoryResponse, GetGasPriceResponse, UserOperationStatus } from "types/lib/api/interfaces";
 import RpcError from "types/lib/api/errors/rpc-error";
 import * as RpcErrorCodes from "types/lib/api/errors/rpc-error-codes";
 import { GasPriceMarkupOne } from "params/lib";
@@ -37,19 +32,11 @@ export class Skandha {
   async getUserOperationStatus(hash: string): Promise<UserOperationStatus> {
     const entry = await this.mempoolService.getEntryByHash(hash);
     if (entry == null) {
-      throw new RpcError(
-        "UserOperation not found",
-        RpcErrorCodes.INVALID_REQUEST
-      );
+      throw new RpcError("UserOperation not found", RpcErrorCodes.INVALID_REQUEST);
     }
 
     const { userOp, entryPoint } = entry;
-    const status =
-      Object.keys(MempoolEntryStatus).find(
-        (status) =>
-          entry.status ===
-          MempoolEntryStatus[status as keyof typeof MempoolEntryStatus]
-      ) ?? "New";
+    const status = Object.keys(MempoolEntryStatus).find((status) => entry.status === MempoolEntryStatus[status as keyof typeof MempoolEntryStatus]) ?? "New";
     const reason = entry.revertReason;
     const transaction = entry.actualTransaction ?? entry.transaction;
 
@@ -64,11 +51,7 @@ export class Skandha {
 
   async getGasPrice(): Promise<GetGasPriceResponse> {
     const multiplier = this.networkConfig.gasPriceMarkup;
-    const gasFee = await getGasFee(
-      this.chainId,
-      this.provider,
-      this.networkConfig.etherscanApiKey
-    );
+    const gasFee = await getGasFee(this.chainId, this.provider, this.networkConfig.etherscanApiKey);
     let { maxPriorityFeePerGas, maxFeePerGas } = gasFee;
 
     if (maxPriorityFeePerGas === undefined || maxFeePerGas === undefined) {
@@ -77,19 +60,14 @@ export class Skandha {
         maxPriorityFeePerGas = gasPrice;
         maxFeePerGas = gasPrice;
       } catch (err) {
-        throw new RpcError(
-          "Could not fetch gas prices",
-          RpcErrorCodes.SERVER_ERROR
-        );
+        throw new RpcError("Could not fetch gas prices", RpcErrorCodes.SERVER_ERROR);
       }
     }
 
     if (multiplier && !BigNumber.from(multiplier).eq(0)) {
       const bnMultiplier = GasPriceMarkupOne.add(multiplier);
       maxFeePerGas = bnMultiplier.mul(maxFeePerGas).div(GasPriceMarkupOne);
-      maxPriorityFeePerGas = bnMultiplier
-        .mul(maxPriorityFeePerGas)
-        .div(GasPriceMarkupOne);
+      maxPriorityFeePerGas = bnMultiplier.mul(maxPriorityFeePerGas).div(GasPriceMarkupOne);
     }
 
     return {
@@ -117,35 +95,21 @@ export class Skandha {
       entryPoints: this.networkConfig.entryPoints,
       beneficiary: this.networkConfig.beneficiary,
       relayers: walletAddresses,
-      minInclusionDenominator: BigNumber.from(
-        this.networkConfig.minInclusionDenominator
-      ).toNumber(),
-      throttlingSlack: BigNumber.from(
-        this.networkConfig.throttlingSlack
-      ).toNumber(),
+      minInclusionDenominator: BigNumber.from(this.networkConfig.minInclusionDenominator).toNumber(),
+      throttlingSlack: BigNumber.from(this.networkConfig.throttlingSlack).toNumber(),
       banSlack: BigNumber.from(this.networkConfig.banSlack).toNumber(),
       minUnstakeDelay: this.networkConfig.minUnstakeDelay,
-      minSignerBalance: `${ethers.utils.formatEther(
-        this.networkConfig.minSignerBalance
-      )} eth`,
+      minSignerBalance: `${ethers.utils.formatEther(this.networkConfig.minSignerBalance)} eth`,
       minStake: `${ethers.utils.formatEther(this.networkConfig.minStake!)} eth`,
       multicall: this.networkConfig.multicall,
-      validationGasLimit: BigNumber.from(
-        this.networkConfig.validationGasLimit
-      ).toNumber(),
-      receiptLookupRange: BigNumber.from(
-        this.networkConfig.receiptLookupRange
-      ).toNumber(),
+      validationGasLimit: BigNumber.from(this.networkConfig.validationGasLimit).toNumber(),
+      receiptLookupRange: BigNumber.from(this.networkConfig.receiptLookupRange).toNumber(),
       etherscanApiKey: hasEtherscanApiKey,
       conditionalTransactions: this.networkConfig.conditionalTransactions,
       rpcEndpointSubmit: hasExecutionRpc,
-      gasPriceMarkup: BigNumber.from(
-        this.networkConfig.gasPriceMarkup
-      ).toNumber(),
+      gasPriceMarkup: BigNumber.from(this.networkConfig.gasPriceMarkup).toNumber(),
       enforceGasPrice: this.networkConfig.enforceGasPrice,
-      enforceGasPriceThreshold: BigNumber.from(
-        this.networkConfig.enforceGasPriceThreshold
-      ).toNumber(),
+      enforceGasPriceThreshold: BigNumber.from(this.networkConfig.enforceGasPriceThreshold).toNumber(),
       eip2930: this.networkConfig.eip2930,
       useropsTTL: this.networkConfig.useropsTTL,
       whitelistedEntities: this.networkConfig.whitelistedEntities,
@@ -174,31 +138,16 @@ export class Skandha {
    * @param blockCount Number of blocks in the requested range
    * @param newestBlock Highest number block of the requested range, or "latest"
    */
-  async getFeeHistory(
-    entryPoint: string,
-    blockCount: BigNumberish,
-    newestBlock: BigNumberish | string
-  ): Promise<GetFeeHistoryResponse> {
+  async getFeeHistory(entryPoint: string, blockCount: BigNumberish, newestBlock: BigNumberish | string): Promise<GetFeeHistoryResponse> {
     const toBlockInfo = await this.provider.getBlock(newestBlock.toString());
-    const fromBlockNumber = BigNumber.from(toBlockInfo.number)
-      .sub(blockCount)
-      .toNumber();
+    const fromBlockNumber = BigNumber.from(toBlockInfo.number).sub(blockCount).toNumber();
     const contract = IEntryPoint__factory.connect(entryPoint, this.provider);
-    const events = await contract.queryFilter(
-      contract.filters.UserOperationEvent(),
-      fromBlockNumber,
-      toBlockInfo.number
-    );
-    const txReceipts = await Promise.all(
-      events.map((event) => event.getTransaction())
-    );
+    const events = await contract.queryFilter(contract.filters.UserOperationEvent(), fromBlockNumber, toBlockInfo.number);
+    const txReceipts = await Promise.all(events.map((event) => event.getTransaction()));
     const txDecoded = txReceipts
       .map((receipt) => {
         try {
-          return contract.interface.decodeFunctionData(
-            "handleOps",
-            receipt.data
-          );
+          return contract.interface.decodeFunctionData("handleOps", receipt.data);
         } catch (err) {
           this.logger.error(err);
           return null;
@@ -206,9 +155,7 @@ export class Skandha {
       })
       .filter((el) => el !== null);
 
-    const actualGasPrice = events.map((event) =>
-      BigNumber.from(event.args.actualGasCost).div(event.args.actualGasUsed)
-    );
+    const actualGasPrice = events.map((event) => BigNumber.from(event.args.actualGasCost).div(event.args.actualGasUsed));
     const userops = txDecoded
       .map((handleOps) => handleOps!.ops as UserOperationStruct[])
       .reduce((p, c) => {
@@ -217,9 +164,7 @@ export class Skandha {
     return {
       actualGasPrice,
       maxFeePerGas: userops.map((userop) => userop.maxFeePerGas),
-      maxPriorityFeePerGas: userops.map(
-        (userop) => userop.maxPriorityFeePerGas
-      ),
+      maxPriorityFeePerGas: userops.map((userop) => userop.maxPriorityFeePerGas),
     };
   }
 
