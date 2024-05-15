@@ -149,9 +149,9 @@ export class MempoolService {
       paymaster: getAddr(userOp.paymasterAndData),
       submittedTime: now(),
     });
+
     await this.mutex.runExclusive(async () => {
       const existingEntry = await this.find(entry);
-      console.log(" existingEntry ", existingEntry);
       if (existingEntry) {
         await this.validateReplaceability(entry, existingEntry);
         await this.db.put(this.getKey(entry), {

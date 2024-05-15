@@ -136,12 +136,11 @@ export class ClassicRelayer extends BaseRelayer {
       this.logger.debug("Sending to a separate rpc");
       const provider = new providers.JsonRpcProvider(this.networkConfig.rpcEndpointSubmit);
       const oasisProvider = sapphire.wrap(provider);
-      console.log(" xx ");
+
       //hash = await oasisProvider.send(method, params);
       hash = await provider.send(method, params);
     } else {
       const oasisProvider = sapphire.wrap(this.provider);
-      console.log(" yy ");
       //hash = await oasisProvider.send(method, params);
       hash = await this.provider.send(method, params);
     }

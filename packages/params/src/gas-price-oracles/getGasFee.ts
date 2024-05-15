@@ -1,12 +1,7 @@
 import { providers } from "ethers";
 import { IGetGasFeeResult, IOracleOptions, oracles } from "./oracles";
 
-export const getGasFee = async (
-  chainId: number,
-  provider: providers.JsonRpcProvider,
-  apiKey = "",
-  options?: IOracleOptions
-): Promise<IGetGasFeeResult> => {
+export const getGasFee = async (chainId: number, provider: providers.JsonRpcProvider, apiKey = "", options?: IOracleOptions): Promise<IGetGasFeeResult> => {
   if (oracles[chainId] !== undefined) {
     try {
       return await oracles[chainId]!(apiKey, provider, options);

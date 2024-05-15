@@ -12,14 +12,14 @@ import { Bundle, NetworkConfig, UserOpValidationResult } from "../../interfaces"
 import { MempoolService } from "../MempoolService";
 import { ReputationService } from "../ReputationService";
 import { UserOpValidationService } from "../UserOpValidation";
-import { mergeStorageMap } from "../../utils/mergeStorageMap";
+
 import { getAddr, wait } from "../../utils";
 import { MempoolEntry } from "../../entities/MempoolEntry";
 import { ExecutorEventBus } from "../SubscriptionService";
 import { IRelayingMode } from "./interfaces";
 import { ClassicRelayer, FlashbotsRelayer, MerkleRelayer, RelayerClass, KolibriRelayer, EchoRelayer, FastlaneRelayer } from "./relayers";
 import { getUserOpGasLimit } from "./utils";
-import { runService } from "./worker";
+import { runService } from "./worker/worker";
 
 export class BundlingService {
   private mutex: Mutex;
@@ -286,28 +286,11 @@ export class BundlingService {
       if (relayersCount == 0) {
         this.logger.debug("Relayers are busy");
       }
-
-      const relayers = this.relayer.getAvailableRelayersAndLockIt();
-
       while (relayersCount-- > 0) {
         let entries = await this.mempoolService.getNewEntriesSorted(this.maxBundleSize);
         // update status entries ?
         await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Verifying);
 
-        // inject multi-threading here
-        const dataForWorker = {
-          chainId: this.chainId,
-          provider: this.provider,
-          networkConfig: this.networkConfig,
-          entries: entries,
-          userOpValidationService: this.userOpValidationService,
-          reputationService: this.reputationService,
-          logger: this.logger,
-          metrics: this.metrics,
-        };
-        // runService(dataForWorker);
-        // continue;
-        //
         if (!entries.length) {
           this.logger.debug("No new entries");
           return;
@@ -333,48 +316,58 @@ export class BundlingService {
         // Ghoulouis: inject here
         this.verifyAndSendBundler(entries);
         continue;
-        /*
-        const gasFee = await getGasFee(this.chainId, this.provider, this.networkConfig.etherscanApiKey);
-        if (gasFee.gasPrice == undefined && gasFee.maxFeePerGas == undefined && gasFee.maxPriorityFeePerGas == undefined) {
-          this.logger.debug("Could not fetch gas prices...");
-          return;
-        }
-        this.logger.debug(" TIME C ");
-        this.logger.debug("Found some entries, trying to create a bundle");
-        const bundle = await this.createBundle(gasFee, entries);
-
-        this.logger.debug(" TIME C2 ");
-        if (!bundle.entries.length) return;
-
-        await this.mempoolService.updateStatus(bundle.entries, MempoolEntryStatus.Pending);
-        this.logger.debug(" TIME C3 ");
-        await this.mempoolService.attemptToBundle(bundle.entries);
-        this.logger.debug(" TIME D ");
-        if (this.config.testingMode) {
-          // need to wait for the tx hash during testing
-          await this.relayer.sendBundle(bundle).catch((err) => {
-            this.logger.error(err);
-          });
-        } else {
-          void this.relayer.sendBundle(bundle).catch((err) => {
-            this.logger.error(err);
-          });
-        }
-        this.logger.debug(" TIME E ");
-        this.logger.debug("Sent new bundle to Skandha relayer...");
-
-        // during testing against spec-tests we need to wait the block to be submitted
-        if (this.config.testingMode) {
-          await wait(500);
-        }
-        this.logger.debug(" TIME F");
-        */
       }
     });
   }
 
   async sendNextBundle2(): Promise<void> {
-    await this.
+    await this.mutex2.runExclusive(async () => {
+      if (!(await this.relayer.canSubmitBundle())) {
+        this.logger.debug("Relayer: Can not submit bundle yet");
+        return;
+      }
+
+      let relayersCount = this.relayer.getAvailableRelayersCount();
+      if (relayersCount == 0) {
+        this.logger.debug("Relayers are busy");
+        return;
+      }
+
+      let entries = await this.mempoolService.getNewEntriesSorted(this.maxBundleSize);
+      if (!entries.length) {
+        this.logger.debug("No new entries");
+        return;
+      }
+      //const relayers = this.relayer.getAvailableRelayersAndLockIt();
+      let index = 0;
+
+      while (relayersCount-- > 0) {
+        let entries = await this.mempoolService.getNewEntriesSorted(this.maxBundleSize);
+        if (!entries.length) {
+          this.logger.debug("No new entries");
+          return;
+        }
+
+        const availableIndex = this.relayer.getAvailableRelayerIndex();
+        if (availableIndex == null) {
+          return;
+        }
+        this.relayer.lockRelayer(availableIndex!);
+        //update status entries ?
+        await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Verifying);
+        const privateKey = this.relayer.getPrivateKey(availableIndex!);
+        // multi-threading here
+        const dataForWorker = {
+          privateKey: privateKey,
+          entries: entries,
+        };
+
+        runService(dataForWorker, this.logger, this.mempoolService, availableIndex!, this.relayer);
+
+        await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Finalized);
+        index++;
+      }
+    });
   }
 
   async verifyAndSendBundler(entries: MempoolEntry[]): Promise<void> {
@@ -407,6 +400,7 @@ export class BundlingService {
 
   // assemble and send new bundle
   private async tryBundle(): Promise<void> {
-    await this.sendNextBundle().catch((err) => this.logger.error(err));
+    await this.sendNextBundle2().catch((err) => this.logger.error(err));
+    // await this.sendNextBundle().catch((err) => this.logger.error(err));
   }
 }

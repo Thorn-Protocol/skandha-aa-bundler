@@ -16,6 +16,7 @@ const WAIT_FOR_TX_MAX_RETRIES = 3; // 3 blocks
 
 export abstract class BaseRelayer implements IRelayingMode {
   protected relayers: Relayer[];
+  protected privateKey: string[];
   protected mutexes: Mutex[];
 
   constructor(
@@ -30,13 +31,24 @@ export abstract class BaseRelayer implements IRelayingMode {
     protected metrics: PerChainMetrics | null
   ) {
     const relayers = this.config.getRelayers();
+    const privateKey = this.config.getPrivateKeys();
+
     if (!relayers) throw new Error("Relayers are not set");
     this.relayers = [...relayers];
+    this.privateKey = [...privateKey];
     this.mutexes = this.relayers.map(() => new Mutex());
   }
 
   isLocked(): boolean {
     return this.mutexes.every((mutex) => mutex.isLocked());
+  }
+
+  lockRelayer(index: number): void {
+    this.mutexes[index].acquire();
+  }
+
+  unlockRelayer(index: number): void {
+    this.mutexes[index].release();
   }
 
   sendBundle(_bundle: Bundle): Promise<void> {
@@ -102,7 +114,11 @@ export abstract class BaseRelayer implements IRelayingMode {
     });
   }
 
-  protected getAvailableRelayerIndex(): number | null {
+  getPrivateKey(index: number): string {
+    return this.privateKey[index];
+  }
+
+  getAvailableRelayerIndex(): number | null {
     const index = this.mutexes.findIndex((mutex) => !mutex.isLocked());
     if (index === -1) {
       return null;

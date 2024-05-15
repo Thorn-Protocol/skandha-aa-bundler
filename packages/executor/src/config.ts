@@ -1,10 +1,11 @@
 // TODO: create a new package "config" instead of this file and refactor
 import { BigNumber, Wallet, providers, utils } from "ethers";
 import { IEntity, RelayingMode } from "types/lib/executor";
-import { getAddress } from "ethers/lib/utils";
+import { getAddress, hexlify } from "ethers/lib/utils";
 import { BundlerConfig, ConfigOptions, NetworkConfig } from "./interfaces";
 
 import HDKey from "hdkey";
+import { buffer } from "stream/consumers";
 export class Config {
   testingMode: boolean;
   unsafeMode: boolean;
@@ -36,13 +37,32 @@ export class Config {
     return new providers.JsonRpcProvider(this.config.rpcEndpoint);
   }
 
+  getPrivateKeys(): string[] {
+    const result = [];
+
+    for (const privKey of this.config.relayers) {
+      if (privKey.startsWith("0x")) {
+        result.push(privKey);
+      }
+    }
+
+    if (this.config.seed.length > 0 && this.config.amountRelayerFromSeed > 0) {
+      const hdKey = HDKey.fromMasterSeed(Buffer.from(this.config.seed, "hex"));
+      for (let i = 0; i < this.config.amountRelayerFromSeed; i++) {
+        const path = `m/44'/60'/0'/0/${i}`;
+        const childKey = hdKey.derive(path);
+        result.push(hexlify(childKey.privateKey));
+      }
+    }
+    return result;
+  }
+
   getRelayers(): Wallet[] | providers.JsonRpcSigner[] | null {
     const provider = this.getNetworkProvider();
 
     if (this.testingMode) {
       return [provider.getSigner()];
     }
-
     const wallets = [];
     for (const privKey of this.config.relayers) {
       if (privKey.startsWith("0x")) {
@@ -60,7 +80,6 @@ export class Config {
         wallets.push(wallet);
       }
     }
-
     return wallets;
   }
 
