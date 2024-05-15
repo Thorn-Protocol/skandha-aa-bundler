@@ -35,7 +35,7 @@ async function asyncFunction(data: any) {
     return;
   }
   log(" private key :: " + privateKey);
-  log(" entries :: " + JSON.stringify(entries));
+  log(" entries :: " + entries.length);
 
   const relayer = new ethers.Wallet(privateKey, provider);
 
@@ -81,9 +81,18 @@ async function asyncFunction(data: any) {
   await submitTransaction(relayer, transaction)
     .then(async (hash) => {
       log("Transaction hash: " + hash);
-      return hash;
+      // setSubmitted(bundle.entries, hash);
+      return {
+        success: true,
+        hash: hash,
+      };
     })
     .catch(async (error) => {
       logError("Transaction error: " + error);
+      // setFailed(bundle.entries, error);
+      return {
+        success: false,
+        error: error,
+      };
     });
 }

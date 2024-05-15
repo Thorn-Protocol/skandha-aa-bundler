@@ -126,7 +126,7 @@ export abstract class BaseRelayer implements IRelayingMode {
     return index;
   }
 
-  protected async handleUserOpFail(entries: MempoolEntry[], err: any): Promise<void> {
+  async handleUserOpFail(entries: MempoolEntry[], err: any): Promise<void> {
     if (err.errorName !== "FailedOp") {
       this.logger.error(`Failed handleOps, but non-FailedOp error ${JSON.stringify(err, undefined, 2)}`);
       return;
@@ -211,7 +211,7 @@ export abstract class BaseRelayer implements IRelayingMode {
     }
   }
 
-  protected async setSubmitted(entries: MempoolEntry[], transaction: string): Promise<void> {
+  async setSubmitted(entries: MempoolEntry[], transaction: string): Promise<void> {
     await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Submitted, {
       transaction,
     });

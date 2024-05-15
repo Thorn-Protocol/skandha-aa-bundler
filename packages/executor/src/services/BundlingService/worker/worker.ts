@@ -8,19 +8,33 @@ export function runService(workerData: any, logger: Logger, mempoolService: Memp
   return new Promise((resolve, reject) => {
     const worker = new wk.Worker("./packages/executor/lib/services/BundlingService/worker/WorkerMission.js", { workerData });
     worker.on("message", async (message) => {
+      // send log from child thread
       if (message.log) {
         logger.debug(` 😵 Worker log:${message.log}`);
-      } else if (message.result) {
-        const hash = message.result;
-        await mempoolService.updateStatus(workerData.entries, MempoolEntryStatus.Finalized);
+      }
+      // result thread
+      if (message.result) {
+        const { success } = message.result;
+        if (success) {
+          // send bundler success
+          const { hash } = message.result;
+          await mempoolService.updateStatus(workerData.entries, MempoolEntryStatus.Finalized);
+          await relayer.setSubmitted(workerData.entries, hash);
+        } else {
+          // send bundler failed
+          const { error } = message.result;
+          await relayer.handleUserOpFail(workerData.entries, error);
+        }
         relayer.unlockRelayer(idRelayer);
         resolve(message.result);
       }
     });
+
     worker.on("error", () => {
       relayer.unlockRelayer(idRelayer);
       reject;
     });
+
     worker.on("exit", (code) => {
       relayer.unlockRelayer(idRelayer);
       if (code !== 0) {

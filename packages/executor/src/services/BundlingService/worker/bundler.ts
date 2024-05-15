@@ -23,22 +23,8 @@ export async function submitTransaction(relayer: Wallet, transaction: providers.
   const signedRawTx = await oasisRelayer.signTransaction(transaction);
   //const signedRawTx = await relayer.signTransaction(transaction);
   const method = "eth_sendRawTransaction";
-
   const params = [signedRawTx];
-
-  let hash = "";
-
-  // if (this.networkConfig.rpcEndpointSubmit) {
-
-  //   const provider = new providers.JsonRpcProvider(this.networkConfig.rpcEndpointSubmit);
-  //   const oasisProvider = sapphire.wrap(provider);
-
-  //   //hash = await oasisProvider.send(method, params);
-  //   hash = await provider.send(method, params);
-  // } else {
-  //   const oasisProvider = sapphire.wrap(this.provider);
-  //hash = await oasisProvider.send(method, params);
-  hash = await provider.send(method, params);
+  let hash = await provider.send(method, params);
   return hash;
 }
 
@@ -65,9 +51,7 @@ export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEnt
       paymaster: getAddr(entry.userOp.paymasterAndData),
       factory: getAddr(entry.userOp.initCode),
     };
-
     let validationResult: UserOpValidationResult;
-
     try {
       validationResult = await simulateValidation(entry.userOp, entry.entryPoint, entry.hash);
     } catch (e: any) {
