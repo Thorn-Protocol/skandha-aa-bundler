@@ -97,6 +97,7 @@ export class MempoolService {
   ): Promise<void> {
     for (const entry of entries) {
       entry.setStatus(status, params);
+
       await this.update(entry);
 
       // event bus logic

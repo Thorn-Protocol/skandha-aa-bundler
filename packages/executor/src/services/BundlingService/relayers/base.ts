@@ -43,8 +43,32 @@ export abstract class BaseRelayer implements IRelayingMode {
     throw new Error("Method not implemented.");
   }
 
+  getAvailableRelayerAndLockIt() {
+    const index = this.getAvailableRelayerIndex();
+    if (index === null) {
+      return null;
+    }
+    this.mutexes[index].acquire();
+    return this.relayers[index];
+  }
+
   getAvailableRelayersCount(): number {
     return this.mutexes.filter((mutex) => !mutex.isLocked()).length;
+  }
+
+  getAvailableRelayers(): Relayer[] {
+    return this.relayers.filter((_, index) => !this.mutexes[index].isLocked());
+  }
+
+  getAvailableRelayersAndLockIt(): Relayer[] {
+    const availableRelayers = this.getAvailableRelayers();
+    availableRelayers.forEach((relayer) => {
+      const index = this.relayers.findIndex((r) => r === relayer);
+      if (index !== -1) {
+        this.mutexes[index].acquire();
+      }
+    });
+    return availableRelayers;
   }
 
   async canSubmitBundle(): Promise<boolean> {

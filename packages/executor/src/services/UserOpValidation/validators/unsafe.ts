@@ -6,21 +6,11 @@ import { NetworkConfig, UserOpValidationResult } from "../../../interfaces";
 import { nonGethErrorHandler, parseErrorResult } from "../utils";
 
 export class UnsafeValidationService {
-  constructor(
-    private provider: providers.Provider,
-    private networkConfig: NetworkConfig,
-    private logger: Logger
-  ) {}
+  constructor(private provider: providers.Provider, private networkConfig: NetworkConfig, private logger: Logger) {}
 
-  async validateUnsafely(
-    userOp: UserOperationStruct,
-    entryPoint: string
-  ): Promise<UserOpValidationResult> {
+  async validateUnsafely(userOp: UserOperationStruct, entryPoint: string): Promise<UserOpValidationResult> {
     const { validationGasLimit } = this.networkConfig;
-    const entryPointContract = IEntryPoint__factory.connect(
-      entryPoint,
-      this.provider
-    );
+    const entryPointContract = IEntryPoint__factory.connect(entryPoint, this.provider);
     const errorResult = await entryPointContract.callStatic
       .simulateValidation(userOp, {
         gasLimit: validationGasLimit,
@@ -29,34 +19,16 @@ export class UnsafeValidationService {
     return parseErrorResult(userOp, errorResult);
   }
 
-  async validateUnsafelyWithForwarder(
-    userOp: UserOperationStruct,
-    entryPoint: string
-  ): Promise<UserOpValidationResult> {
+  async validateUnsafelyWithForwarder(userOp: UserOperationStruct, entryPoint: string): Promise<UserOpValidationResult> {
     const forwarderABI = ["function forward(address, bytes)"];
-    const gasLimit = BigNumber.from(this.networkConfig.validationGasLimit).add(
-      100000
-    );
-    const entryPointContract = IEntryPoint__factory.connect(
-      entryPoint,
-      this.provider
-    );
-    const validationData = entryPointContract.interface.encodeFunctionData(
-      "simulateValidation",
-      [userOp]
-    );
+    const gasLimit = BigNumber.from(this.networkConfig.validationGasLimit).add(100000);
+    const entryPointContract = IEntryPoint__factory.connect(entryPoint, this.provider);
+    const validationData = entryPointContract.interface.encodeFunctionData("simulateValidation", [userOp]);
 
-    const forwarder = new Contract(
-      this.networkConfig.entryPointForwarder,
-      forwarderABI,
-      this.provider
-    );
+    const forwarder = new Contract(this.networkConfig.entryPointForwarder, forwarderABI, this.provider);
     const data = await this.provider.call({
       to: this.networkConfig.entryPointForwarder,
-      data: forwarder.interface.encodeFunctionData("forward", [
-        entryPoint,
-        validationData,
-      ]),
+      data: forwarder.interface.encodeFunctionData("forward", [entryPoint, validationData]),
       gasLimit,
     });
     const error = entryPointContract.interface.parseError(data);

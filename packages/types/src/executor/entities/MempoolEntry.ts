@@ -6,4 +6,5 @@ export enum MempoolEntryStatus {
   Finalized = 4,
   Cancelled = 5,
   Reverted = 6,
+  Verifying = 7,
 }

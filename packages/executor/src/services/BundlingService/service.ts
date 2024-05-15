@@ -19,9 +19,11 @@ import { ExecutorEventBus } from "../SubscriptionService";
 import { IRelayingMode } from "./interfaces";
 import { ClassicRelayer, FlashbotsRelayer, MerkleRelayer, RelayerClass, KolibriRelayer, EchoRelayer, FastlaneRelayer } from "./relayers";
 import { getUserOpGasLimit } from "./utils";
+import { runService } from "./worker";
 
 export class BundlingService {
   private mutex: Mutex;
+  private mutex2: Mutex;
   private bundlingMode: BundlingMode;
   private autoBundlingInterval: number;
   private autoBundlingCron?: NodeJS.Timer;
@@ -43,6 +45,7 @@ export class BundlingService {
     relayingMode: RelayingMode
   ) {
     this.mutex = new Mutex();
+    this.mutex2 = new Mutex();
     this.networkConfig = config.getNetworkConfig();
 
     let Relayer: RelayerClass;
@@ -223,13 +226,13 @@ export class BundlingService {
 
       this.metrics?.useropsAttempted.inc();
 
-      if ((this.networkConfig.conditionalTransactions || this.networkConfig.eip2930) && validationResult.storageMap) {
-        if (BigNumber.from(entry.userOp.nonce).gt(0)) {
-          const { storageHash } = await this.provider.send("eth_getProof", [entry.userOp.sender, [], "latest"]);
-          bundle.storageMap[entry.userOp.sender.toLowerCase()] = storageHash;
-        }
-        mergeStorageMap(bundle.storageMap, validationResult.storageMap);
-      }
+      // if ((this.networkConfig.conditionalTransactions || this.networkConfig.eip2930) && validationResult.storageMap) {
+      //   if (BigNumber.from(entry.userOp.nonce).gt(0)) {
+      //     const { storageHash } = await this.provider.send("eth_getProof", [entry.userOp.sender, [], "latest"]);
+      //     bundle.storageMap[entry.userOp.sender.toLowerCase()] = storageHash;
+      //   }
+      //   mergeStorageMap(bundle.storageMap, validationResult.storageMap);
+      // }
       bundle.entries.push(entry);
 
       const { maxFeePerGas, maxPriorityFeePerGas } = bundle;
@@ -283,12 +286,33 @@ export class BundlingService {
       if (relayersCount == 0) {
         this.logger.debug("Relayers are busy");
       }
+
+      const relayers = this.relayer.getAvailableRelayersAndLockIt();
+
       while (relayersCount-- > 0) {
         let entries = await this.mempoolService.getNewEntriesSorted(this.maxBundleSize);
+        // update status entries ?
+        await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Verifying);
+
+        // inject multi-threading here
+        const dataForWorker = {
+          chainId: this.chainId,
+          provider: this.provider,
+          networkConfig: this.networkConfig,
+          entries: entries,
+          userOpValidationService: this.userOpValidationService,
+          reputationService: this.reputationService,
+          logger: this.logger,
+          metrics: this.metrics,
+        };
+        // runService(dataForWorker);
+        // continue;
+        //
         if (!entries.length) {
           this.logger.debug("No new entries");
           return;
         }
+
         this.logger.debug(" TIME A ");
         // remove entries from mempool if submitAttempts are greater than maxAttempts
         const invalidEntries = entries.filter((entry) => entry.submitAttempts > this.maxSubmitAttempts);
@@ -305,6 +329,11 @@ export class BundlingService {
           this.logger.debug("No entries left");
           return;
         }
+
+        // Ghoulouis: inject here
+        this.verifyAndSendBundler(entries);
+        continue;
+        /*
         const gasFee = await getGasFee(this.chainId, this.provider, this.networkConfig.etherscanApiKey);
         if (gasFee.gasPrice == undefined && gasFee.maxFeePerGas == undefined && gasFee.maxPriorityFeePerGas == undefined) {
           this.logger.debug("Could not fetch gas prices...");
@@ -316,6 +345,7 @@ export class BundlingService {
 
         this.logger.debug(" TIME C2 ");
         if (!bundle.entries.length) return;
+
         await this.mempoolService.updateStatus(bundle.entries, MempoolEntryStatus.Pending);
         this.logger.debug(" TIME C3 ");
         await this.mempoolService.attemptToBundle(bundle.entries);
@@ -338,8 +368,41 @@ export class BundlingService {
           await wait(500);
         }
         this.logger.debug(" TIME F");
+        */
       }
     });
+  }
+
+  async sendNextBundle2(): Promise<void> {
+    await this.
+  }
+
+  async verifyAndSendBundler(entries: MempoolEntry[]): Promise<void> {
+    const gasFee = await getGasFee(this.chainId, this.provider, this.networkConfig.etherscanApiKey);
+    if (gasFee.gasPrice == undefined && gasFee.maxFeePerGas == undefined && gasFee.maxPriorityFeePerGas == undefined) {
+      this.logger.debug("Could not fetch gas prices...");
+      return;
+    }
+    this.logger.debug(" START VERIFY ", entries.length);
+    this.logger.debug("Found some entries, trying to create a bundle");
+    const bundle = await this.createBundle(gasFee, entries);
+    if (!bundle.entries.length) return;
+    await this.mempoolService.updateStatus(bundle.entries, MempoolEntryStatus.Pending);
+    this.logger.debug(" TIME C3 ");
+    await this.mempoolService.attemptToBundle(bundle.entries);
+    this.logger.debug(" TIME D ");
+    if (this.config.testingMode) {
+      // need to wait for the tx hash during testing
+      await this.relayer.sendBundle(bundle).catch((err) => {
+        this.logger.error(err);
+      });
+    } else {
+      void this.relayer.sendBundle(bundle).catch((err) => {
+        this.logger.error(err);
+      });
+    }
+    this.logger.debug(" TIME E ");
+    this.logger.debug("Sent new bundle to Skandha relayer...");
   }
 
   // assemble and send new bundle
