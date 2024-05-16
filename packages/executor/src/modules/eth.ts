@@ -7,7 +7,7 @@ import { EstimatedUserOperationGas, UserOperationByHashResponse, UserOperationRe
 import { MempoolEntryStatus } from "types/lib/executor";
 import { IEntryPoint__factory } from "types/lib/executor/contracts/factories";
 import { IPVGEstimator } from "params/lib/types/IPVGEstimator";
-import { estimateOptimismPVG, estimateArbitrumPVG, ECDSA_DUMMY_SIGNATURE, estimateMantlePVG, estimateAncient8PVG } from "params/lib";
+import { estimateArbitrumPVG, ECDSA_DUMMY_SIGNATURE, estimateMantlePVG, estimateAncient8PVG } from "params/lib";
 import { Logger } from "types/lib";
 import { PerChainMetrics } from "monitoring/lib";
 import { deepHexlify } from "utils/lib/hexlify";
@@ -37,10 +37,10 @@ export class Eth {
       this.pvgEstimator = estimateArbitrumPVG(this.provider);
     }
 
-    // ["optimism", "optimismGoerli", "base"]
-    if ([10, 420, 8453].includes(this.chainId)) {
-      this.pvgEstimator = estimateOptimismPVG(this.provider);
-    }
+    // // ["optimism", "optimismGoerli", "base"]
+    // if ([10, 420, 8453].includes(this.chainId)) {
+    //   this.pvgEstimator = estimateOptimismPVG(this.provider);
+    // }
 
     // mantle
     if ([5000, 5001].includes(this.chainId)) {

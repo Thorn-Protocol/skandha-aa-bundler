@@ -6,6 +6,10 @@ import { getSkandhaCli, yarg } from "./cli";
 
 const bundler = getSkandhaCli();
 
+setInterval(() => {
+  console.clear();
+}, 24 * 60 * 60 * 1000);
+
 void bundler
   .fail((msg, err) => {
     if (msg) {
@@ -16,12 +20,7 @@ void bundler
       }
     }
 
-    const errorMessage =
-      err !== undefined
-        ? err instanceof YargsError
-          ? err.message
-          : err.stack
-        : msg || "Unknown Error";
+    const errorMessage = err !== undefined ? (err instanceof YargsError ? err.message : err.stack) : msg || "Unknown Error";
 
     // eslint-disable-next-line no-console
     console.error(` ✖ ${errorMessage}\n`);
