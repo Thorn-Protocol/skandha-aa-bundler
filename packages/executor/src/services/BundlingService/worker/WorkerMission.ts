@@ -1,11 +1,8 @@
 import { parentPort, workerData } from "worker_threads";
 import { BigNumber, ethers, providers, Wallet } from "ethers";
-
 import { IEntryPoint__factory } from "types/lib/executor/contracts";
-
 import { estimateBundleGasLimit, getUserOpGasLimit } from "../utils";
 import { getGasFee } from "params/lib";
-
 import { createBundle, submitTransaction } from "./bundler";
 
 const chainId = 23295;
