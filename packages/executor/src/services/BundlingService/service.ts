@@ -102,7 +102,7 @@ export class BundlingService {
       maxFeePerGas: BigNumber.from(0),
       maxPriorityFeePerGas: BigNumber.from(0),
     };
-    this.logger.debug("Creating bundle A ");
+
     const gasLimit = BigNumber.from(0);
     const paymasterDeposit: { [key: string]: BigNumber } = {};
     const stakedEntityCount: { [key: string]: number } = {};
@@ -110,10 +110,8 @@ export class BundlingService {
     const knownSenders = entries.map((it) => {
       return it.userOp.sender.toLowerCase();
     });
-    this.logger.debug("Creating bundle B ");
-    for (const entry of entries) {
-      this.logger.debug("Creating bundle 1 ");
 
+    for (const entry of entries) {
       if (getUserOpGasLimit(entry.userOp, gasLimit).gt(this.networkConfig.bundleGasLimit)) {
         this.logger.debug(`${entry.userOpHash} reached bundle gas limit`);
         continue;
@@ -144,17 +142,23 @@ export class BundlingService {
           continue;
         }
       }
-      this.logger.debug("Creating bundle B2 ");
+
       const entities = {
         paymaster: getAddr(entry.userOp.paymasterAndData),
         factory: getAddr(entry.userOp.initCode),
       };
+
       for (const [title, entity] of Object.entries(entities)) {
         if (!entity) continue;
         const status = await this.reputationService.getStatus(entity);
         if (status === ReputationStatus.BANNED) {
           this.logger.debug(`${title} - ${entity} is banned. Deleting userop ${entry.userOpHash}...`);
-          await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Cancelled, { revertReason: `${title} - ${entity} is banned.` });
+
+          // await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Cancelled, { revertReason: `${title} - ${entity} is banned.` });
+          // continue;
+
+          // Ghoulouis: inject here
+          await this.mempoolService.updateStatus([entry], MempoolEntryStatus.Cancelled, { revertReason: `${title} - ${entity} is banned.` });
           continue;
         } else if (status === ReputationStatus.THROTTLED || (stakedEntityCount[entity] ?? 0) > 1) {
           this.logger.debug(
@@ -168,21 +172,22 @@ export class BundlingService {
           continue;
         }
       }
-      this.logger.debug("Creating bundle B3 ");
+
       if (senders.has(entry.userOp.sender)) {
         this.logger.debug({ sender: entry.userOp.sender, nonce: entry.userOp.nonce }, "skipping already included sender");
         continue;
       }
-      this.logger.debug("Creating bundle B4 ");
+
       let validationResult: UserOpValidationResult;
       try {
         validationResult = await this.userOpValidationService.simulateValidation(entry.userOp, entry.entryPoint, entry.hash);
       } catch (e: any) {
         this.logger.debug(`${entry.userOpHash} failed 2nd validation: ${e.message}. Deleting...`);
-        await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Cancelled, { revertReason: e.message });
+        // await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Cancelled, { revertReason: e.message });
+        await this.mempoolService.updateStatus([entry], MempoolEntryStatus.Cancelled, { revertReason: e.message });
+        continue;
         continue;
       }
-      this.logger.debug("Creating bundle B5 ");
 
       // Check if userOp is trying to access storage of another userop
       if (validationResult.storageMap) {
@@ -197,7 +202,7 @@ export class BundlingService {
           continue;
         }
       }
-      this.logger.debug("Creating bundle B6 ");
+
       // TODO: add total gas cap
       const entryPointContract = IEntryPoint__factory.connect(entry.entryPoint, this.provider);
       if (entities.paymaster) {
@@ -215,7 +220,6 @@ export class BundlingService {
         stakedEntityCount[paymaster] = (stakedEntityCount[paymaster] ?? 0) + 1;
         paymasterDeposit[paymaster] = BigNumber.from(paymasterDeposit[paymaster]?.sub(validationResult.returnInfo.prefund));
       }
-      this.logger.debug("Creating bundle B7 ");
 
       if (entities.factory) {
         const { factory } = entities;
@@ -225,7 +229,6 @@ export class BundlingService {
       senders.add(entry.userOp.sender);
 
       this.metrics?.useropsAttempted.inc();
-
       // if ((this.networkConfig.conditionalTransactions || this.networkConfig.eip2930) && validationResult.storageMap) {
       //   if (BigNumber.from(entry.userOp.nonce).gt(0)) {
       //     const { storageHash } = await this.provider.send("eth_getProof", [entry.userOp.sender, [], "latest"]);
@@ -239,8 +242,6 @@ export class BundlingService {
       bundle.maxFeePerGas = maxFeePerGas.add(entry.userOp.maxFeePerGas);
       bundle.maxPriorityFeePerGas = maxPriorityFeePerGas.add(entry.userOp.maxPriorityFeePerGas);
     }
-
-    this.logger.debug("Creating bundle C ");
 
     // skip gas fee protection on Fuse
     if (this.provider.network.chainId == 122) {
@@ -296,7 +297,6 @@ export class BundlingService {
           return;
         }
 
-        this.logger.debug(" TIME A ");
         // remove entries from mempool if submitAttempts are greater than maxAttempts
         const invalidEntries = entries.filter((entry) => entry.submitAttempts > this.maxSubmitAttempts);
         if (invalidEntries.length > 0) {
@@ -307,7 +307,6 @@ export class BundlingService {
           });
           entries = await this.mempoolService.getNewEntriesSorted(this.maxBundleSize);
         }
-        this.logger.debug(" TIME B ");
         if (!entries.length) {
           this.logger.debug("No entries left");
           return;
@@ -364,7 +363,7 @@ export class BundlingService {
 
         runService(dataForWorker, this.logger, this.mempoolService, availableIndex!, this.relayer);
 
-        await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Finalized);
+        //await this.mempoolService.updateStatus(entries, MempoolEntryStatus.Finalized);
         index++;
       }
     });

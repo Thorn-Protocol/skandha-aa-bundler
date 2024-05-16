@@ -12,6 +12,11 @@ export function runService(workerData: any, logger: Logger, mempoolService: Memp
       if (message.log) {
         logger.debug(` 😵 Worker log:${message.log}`);
       }
+      //action update status
+      if (message.updateStatus) {
+        const { entries, status, params } = message.updateStatus;
+        await mempoolService.updateStatus(entries, status, params);
+      }
       // result thread
       if (message.result) {
         const { success } = message.result;

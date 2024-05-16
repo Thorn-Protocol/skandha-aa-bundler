@@ -7,8 +7,9 @@ import { Bundle, UserOpValidationResult } from "../../../interfaces";
 import { getAddr } from "../../../utils";
 import { nonGethErrorHandler, parseErrorResult } from "../../UserOpValidation/utils";
 import { getUserOpGasLimit } from "../utils";
-import { log } from "./WorkerMission";
+import { log, updateStatus } from "./WorkerMission";
 import * as sapphire from "@oasisprotocol/sapphire-paratime";
+import { MempoolEntryStatus } from "types/lib/executor";
 // setup
 
 const chainId = 23295;
@@ -42,7 +43,7 @@ export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEnt
   const knownSenders = entries.map((it) => {
     return it.userOp.sender.toLowerCase();
   });
-  log(" Create bundler A ");
+
   for (const entry of entries) {
     if (getUserOpGasLimit(entry.userOp, gasLimit).gt(bundleGasLimit)) {
       continue;
@@ -56,6 +57,7 @@ export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEnt
       validationResult = await simulateValidation(entry.userOp, entry.entryPoint, entry.hash);
     } catch (e: any) {
       //await mempoolService.updateStatus(entries, MempoolEntryStatus.Cancelled, { revertReason: e.message });
+      updateStatus(entries, MempoolEntryStatus.Cancelled, { revertReason: e.message });
       continue;
     }
 
@@ -101,7 +103,7 @@ export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEnt
     bundle.maxFeePerGas = maxFeePerGas.add(entry.userOp.maxFeePerGas);
     bundle.maxPriorityFeePerGas = maxPriorityFeePerGas.add(entry.userOp.maxPriorityFeePerGas);
   }
-  log(" Create bundler B ");
+
   if (bundle.entries.length > 1) {
     // average of userops
     bundle.maxFeePerGas = bundle.maxFeePerGas.div(bundle.entries.length);
