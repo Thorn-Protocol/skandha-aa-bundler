@@ -1,6 +1,8 @@
 FROM --platform=${BUILDPLATFORM:-amd64} node:18-alpine as build_src
 WORKDIR /usr/app
-RUN apk update && apk add --no-cache g++ make python3 git && rm -rf /var/cache/apk/*
+RUN apk update && apk add --no-cache g++ make python3 git py3-pip && rm -rf /var/cache/apk/* 
+
+RUN pip3 install --no-cache --upgrade --break-system-packages pip setuptools 
 
 COPY . .
 
