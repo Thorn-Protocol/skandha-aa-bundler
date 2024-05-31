@@ -41,6 +41,7 @@ parentPort!.on("message", async () => {
     let result = await asyncFunction(workerData);
     log("Worker finished");
     parentPort!.postMessage({ result: result });
+    process.exit();
 });
 
 async function asyncFunction(data: any): Promise<any> {
