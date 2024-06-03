@@ -53,11 +53,8 @@ async function asyncFunction(data: any): Promise<any> {
             log("No new entries");
             return;
         }
-
         const relayer = new ethers.Wallet(privateKey, provider);
-
         const gasFee = await getGasFee(chainId, provider, "");
-
         if (gasFee.gasPrice == undefined && gasFee.maxFeePerGas == undefined && gasFee.maxPriorityFeePerGas == undefined) {
             return;
         }
@@ -65,11 +62,8 @@ async function asyncFunction(data: any): Promise<any> {
         const bundle = await createBundle(gasFee, entries, provider);
 
         //await mempoolService.updateStatus(bundle.entries, MempoolEntryStatus.Pending);
-
         //await mempoolService.attemptToBundle(bundle.entries);
-
         //relayer send transaction
-
         const { entries: bundleEntries } = bundle;
 
         const wallet = new ethers.Wallet(privateKey, provider);
