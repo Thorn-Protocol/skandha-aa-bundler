@@ -12,10 +12,10 @@ import * as sapphire from "@oasisprotocol/sapphire-paratime";
 import { MempoolEntryStatus } from "types/lib/executor";
 // setup
 
-const chainId = 23295;
+const chainId = 23294;
 const bundleGasLimit = 13e6;
 const bundleGasLimitMarkup = 25000;
-const provider = new providers.JsonRpcProvider("https://testnet.sapphire.oasis.io");
+const provider = new providers.JsonRpcProvider("https://sapphire.oasis.io");
 
 // setup
 
@@ -54,7 +54,9 @@ export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEnt
         };
         let validationResult: UserOpValidationResult;
         try {
+            log(" before check ");
             validationResult = await simulateValidation(entry.userOp, entry.entryPoint, entry.hash);
+            log(" after check ");
         } catch (e: any) {
             //await mempoolService.updateStatus(entries, MempoolEntryStatus.Cancelled, { revertReason: e.message });
             updateStatus([entry], MempoolEntryStatus.Cancelled, { revertReason: e.message });

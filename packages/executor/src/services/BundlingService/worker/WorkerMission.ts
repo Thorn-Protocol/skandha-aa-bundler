@@ -7,10 +7,10 @@ import { createBundle, submitTransaction } from "./bundler";
 import { MempoolEntryStatus } from "types/lib/executor";
 import { MempoolEntry } from "../../../entities/MempoolEntry";
 
-const chainId = 23295;
+const chainId = 23294;
 const bundleGasLimit = 13e6;
 const bundleGasLimitMarkup = 25000;
-const provider = new providers.JsonRpcProvider("https://testnet.sapphire.oasis.io");
+const provider = new providers.JsonRpcProvider("https://sapphire.oasis.io");
 
 export async function log(text: string) {
     parentPort!.postMessage({ log: "✅" + text });
@@ -59,6 +59,7 @@ async function asyncFunction(data: any): Promise<any> {
             return;
         }
         log(" create Bundler");
+
         const bundle = await createBundle(gasFee, entries, provider);
 
         //await mempoolService.updateStatus(bundle.entries, MempoolEntryStatus.Pending);
