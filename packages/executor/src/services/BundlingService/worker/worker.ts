@@ -17,7 +17,6 @@ export function runService(workerData: any, logger: Logger, mempoolService: Memp
                 //action update status
                 if (message.updateStatus) {
                     const { entries, status, params } = message.updateStatus;
-                    console.debug("updateStatus", entries, status, params);
                     let newEntries: MempoolEntry[] = [];
                     for (let entry of entries) {
                         const userOp = entry.userOpHash;
