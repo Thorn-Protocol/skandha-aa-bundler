@@ -4,26 +4,26 @@
 import { YargsError } from "./util";
 import { getSkandhaCli, yarg } from "./cli";
 
-const bundler = getSkandhaCli();
-
+console.log("set auto clear console every 24 hours");
 setInterval(() => {
-  console.clear();
+    console.clear();
 }, 24 * 60 * 60 * 1000);
 
+const bundler = getSkandhaCli();
 void bundler
-  .fail((msg, err) => {
-    if (msg) {
-      if (msg.includes("Not enough non-option arguments")) {
-        yarg.showHelp();
+    .fail((msg, err) => {
+        if (msg) {
+            if (msg.includes("Not enough non-option arguments")) {
+                yarg.showHelp();
+                // eslint-disable-next-line no-console
+                console.log("\n");
+            }
+        }
+
+        const errorMessage = err !== undefined ? (err instanceof YargsError ? err.message : err.stack) : msg || "Unknown Error";
+
         // eslint-disable-next-line no-console
-        console.log("\n");
-      }
-    }
-
-    const errorMessage = err !== undefined ? (err instanceof YargsError ? err.message : err.stack) : msg || "Unknown Error";
-
-    // eslint-disable-next-line no-console
-    console.error(` ✖ ${errorMessage}\n`);
-    process.exit(1);
-  })
-  .parse();
+        console.error(` ✖ ${errorMessage}\n`);
+        process.exit(1);
+    })
+    .parse();

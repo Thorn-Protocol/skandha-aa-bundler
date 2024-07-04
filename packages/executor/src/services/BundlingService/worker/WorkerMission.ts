@@ -7,11 +7,7 @@ import { createBundle, submitTransaction } from "./bundler";
 import { MempoolEntryStatus } from "types/lib/executor";
 import { MempoolEntry } from "../../../entities/MempoolEntry";
 
-const chainId = 23294;
-const bundleGasLimit = 13e6;
 const bundleGasLimitMarkup = 25000;
-const provider = new providers.JsonRpcProvider("https://sapphire.oasis.io");
-
 export async function log(text: string) {
     parentPort!.postMessage({ log: "✅" + text });
 }
@@ -47,7 +43,8 @@ parentPort!.on("message", async () => {
 async function asyncFunction(data: any): Promise<any> {
     try {
         log("Worker started");
-        const { entries, privateKey } = data;
+        const { entries, privateKey, provider_url, chainId } = data;
+        const provider = new providers.JsonRpcProvider(provider_url);
 
         if (!entries.length) {
             log("No new entries");
@@ -62,9 +59,6 @@ async function asyncFunction(data: any): Promise<any> {
 
         const bundle = await createBundle(gasFee, entries, provider);
 
-        //await mempoolService.updateStatus(bundle.entries, MempoolEntryStatus.Pending);
-        //await mempoolService.attemptToBundle(bundle.entries);
-        //relayer send transaction
         const { entries: bundleEntries } = bundle;
 
         const wallet = new ethers.Wallet(privateKey, provider);

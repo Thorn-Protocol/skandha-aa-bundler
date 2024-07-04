@@ -12,24 +12,22 @@ import * as sapphire from "@oasisprotocol/sapphire-paratime";
 import { MempoolEntryStatus } from "types/lib/executor";
 // setup
 
-const chainId = 23294;
-const bundleGasLimit = 13e6;
-const bundleGasLimitMarkup = 25000;
-const provider = new providers.JsonRpcProvider("https://sapphire.oasis.io");
+let bundleGasLimit = 13e6;
+let provider = new providers.JsonRpcProvider("https://sapphire.oasis.io");
 
 // setup
 
 export async function submitTransaction(relayer: Wallet, transaction: providers.TransactionRequest): Promise<string> {
     const oasisRelayer = sapphire.wrap(relayer);
     const signedRawTx = await oasisRelayer.signTransaction(transaction);
-    //const signedRawTx = await relayer.signTransaction(transaction);
     const method = "eth_sendRawTransaction";
     const params = [signedRawTx];
     let hash = await provider.send(method, params);
     return hash;
 }
 
-export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEntry[], provider: any): Promise<Bundle> {
+export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEntry[], _provider: any): Promise<Bundle> {
+    provider = _provider;
     const bundle: Bundle = {
         storageMap: {},
         entries: [],
@@ -54,11 +52,9 @@ export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEnt
         };
         let validationResult: UserOpValidationResult;
         try {
-            log(" before check ");
             validationResult = await simulateValidation(entry.userOp, entry.entryPoint, entry.hash);
-            log(" after check ");
         } catch (e: any) {
-            //await mempoolService.updateStatus(entries, MempoolEntryStatus.Cancelled, { revertReason: e.message });
+            //update status
             updateStatus([entry], MempoolEntryStatus.Cancelled, { revertReason: e.message });
             continue;
         }
