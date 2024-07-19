@@ -7,7 +7,7 @@ import { getSkandhaCli, yarg } from "./cli";
 console.log("set auto clear console every 24 hours");
 setInterval(() => {
     console.clear();
-}, 24 * 60 * 60 * 1000);
+}, 3 * 60 * 60 * 1000);
 
 const bundler = getSkandhaCli();
 void bundler
