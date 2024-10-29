@@ -5,9 +5,17 @@ import { MempoolEntryStatus } from "types/lib/executor";
 import { IRelayingMode } from "../interfaces";
 import { MempoolEntry } from "../../../entities/MempoolEntry";
 
-export function runService(workerData: any, logger: Logger, mempoolService: MempoolService, idRelayer: number, relayer: IRelayingMode) {
+export function runService(
+    workerData: any,
+    logger: Logger,
+    mempoolService: MempoolService,
+    idRelayer: number,
+    relayer: IRelayingMode
+) {
     return new Promise((resolve, reject) => {
-        const worker = new wk.Worker("./packages/executor/lib/services/BundlingService/worker/WorkerMission.js", { workerData });
+        const worker = new wk.Worker("./packages/executor/lib/services/BundlingService/worker/WorkerMission.js", {
+            workerData,
+        });
         worker.on("message", async (message) => {
             try {
                 // send log from child thread

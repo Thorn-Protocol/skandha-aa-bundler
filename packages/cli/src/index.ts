@@ -20,7 +20,8 @@ void bundler
             }
         }
 
-        const errorMessage = err !== undefined ? (err instanceof YargsError ? err.message : err.stack) : msg || "Unknown Error";
+        const errorMessage =
+            err !== undefined ? (err instanceof YargsError ? err.message : err.stack) : msg || "Unknown Error";
 
         // eslint-disable-next-line no-console
         console.error(` ✖ ${errorMessage}\n`);
