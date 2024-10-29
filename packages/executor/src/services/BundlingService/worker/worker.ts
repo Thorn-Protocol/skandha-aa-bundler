@@ -20,7 +20,7 @@ export function runService(
             try {
                 // send log from child thread
                 if (message.log) {
-                    logger.debug(` 😵 Worker log:${message.log}`);
+                    logger.info(` 😵 Worker log:${message.log}`);
                 }
                 //action update status
                 if (message.updateStatus) {
