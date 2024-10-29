@@ -52,7 +52,11 @@ async function asyncFunction(data: any): Promise<any> {
         }
         const relayer = new ethers.Wallet(privateKey, provider);
         const gasFee = await getGasFee(chainId, provider, "");
-        if (gasFee.gasPrice == undefined && gasFee.maxFeePerGas == undefined && gasFee.maxPriorityFeePerGas == undefined) {
+        if (
+            gasFee.gasPrice == undefined &&
+            gasFee.maxFeePerGas == undefined &&
+            gasFee.maxPriorityFeePerGas == undefined
+        ) {
             return;
         }
         log(" create Bundler");
@@ -69,7 +73,10 @@ async function asyncFunction(data: any): Promise<any> {
 
         const entryPointContract = IEntryPoint__factory.connect(entryPoint, provider);
 
-        const txRequest = entryPointContract.interface.encodeFunctionData("handleOps", [bundleEntries.map((entry) => entry.userOp), beneficiary]);
+        const txRequest = entryPointContract.interface.encodeFunctionData("handleOps", [
+            bundleEntries.map((entry) => entry.userOp),
+            beneficiary,
+        ]);
 
         const transactionRequest: providers.TransactionRequest = {
             to: entryPoint,
@@ -84,7 +91,7 @@ async function asyncFunction(data: any): Promise<any> {
             nonce: await relayer.getTransactionCount(),
         };
 
-        return await submitTransaction(relayer, transaction)
+        return await submitTransaction(relayer, provider, transaction)
             .then(async (hash) => {
                 log("Transaction hash: " + hash);
                 return {

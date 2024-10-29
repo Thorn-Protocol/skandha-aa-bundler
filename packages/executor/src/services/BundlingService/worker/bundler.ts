@@ -13,11 +13,14 @@ import { MempoolEntryStatus } from "types/lib/executor";
 // setup
 
 let bundleGasLimit = 13e6;
-let provider = new providers.JsonRpcProvider("https://sapphire.oasis.io");
-
+let provider: any;
 // setup
 
-export async function submitTransaction(relayer: Wallet, transaction: providers.TransactionRequest): Promise<string> {
+export async function submitTransaction(
+    relayer: Wallet,
+    provider: any,
+    transaction: providers.TransactionRequest
+): Promise<string> {
     const oasisRelayer = sapphire.wrap(relayer);
     const signedRawTx = await oasisRelayer.signTransaction(transaction);
     const method = "eth_sendRawTransaction";
@@ -86,7 +89,9 @@ export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEnt
                 continue;
             }
             stakedEntityCount[paymaster] = (stakedEntityCount[paymaster] ?? 0) + 1;
-            paymasterDeposit[paymaster] = BigNumber.from(paymasterDeposit[paymaster]?.sub(validationResult.returnInfo.prefund));
+            paymasterDeposit[paymaster] = BigNumber.from(
+                paymasterDeposit[paymaster]?.sub(validationResult.returnInfo.prefund)
+            );
         }
 
         if (entities.factory) {
@@ -109,7 +114,10 @@ export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEnt
     }
 
     // if onchain fee is less than userops fee, use onchain fee
-    if (bundle.maxFeePerGas.gt(gasFee.maxFeePerGas ?? gasFee.gasPrice!) && bundle.maxPriorityFeePerGas.gt(gasFee.maxPriorityFeePerGas!)) {
+    if (
+        bundle.maxFeePerGas.gt(gasFee.maxFeePerGas ?? gasFee.gasPrice!) &&
+        bundle.maxPriorityFeePerGas.gt(gasFee.maxPriorityFeePerGas!)
+    ) {
         bundle.maxFeePerGas = BigNumber.from(gasFee.maxFeePerGas ?? gasFee.gasPrice!);
         bundle.maxPriorityFeePerGas = BigNumber.from(gasFee.maxPriorityFeePerGas!);
     }
@@ -117,7 +125,11 @@ export async function createBundle(gasFee: IGetGasFeeResult, entries: MempoolEnt
     return bundle;
 }
 
-async function simulateValidation(userOp: UserOperationStruct, entryPoint: string, codehash?: string): Promise<UserOpValidationResult> {
+async function simulateValidation(
+    userOp: UserOperationStruct,
+    entryPoint: string,
+    codehash?: string
+): Promise<UserOpValidationResult> {
     return await validateUnsafely(userOp, entryPoint);
 }
 
